@@ -1,105 +1,166 @@
-# ARCHITECTURE
+﻿# ARCHITECTURE
 
 ## Visión general
-La arquitectura del MVP se centra en una ejecución simple y controlada: el usuario elige un agente, entrega una ruta local a un dataset y formula una pregunta. El sistema crea o recupera contexto de sesión, registra un run, prepara el dataset en DuckDB, resuelve el agente mediante un `Agent Registry` ligero y ejecuta el análisis.
+La arquitectura de `3_agents` entra en una nueva etapa: el **core analítico del MVP ya existe** y pasa a ser la base estable del producto.
 
-No existe Planner. No existe routing automático. La inteligencia del MVP está concentrada en un único agente real: `data_analyst`.
+El objetivo ahora es añadir una **interfaz web principal** y una **API local** sin romper el flujo ya validado por CLI. El producto sigue siendo **local-first**: el dataset vive en la máquina del usuario, DuckDB corre en local y Ollama sigue siendo un prerequisito local explícito.
+
+## Principio rector
+La UI y la API se apoyan en el mismo core existente. No deben reimplementar:
+- validación del run;
+- preparación del dataset;
+- tracking de sesión/run;
+- resolución del agente;
+- persistencia de artifacts;
+- integración con DuckDB y Ollama.
 
 ## Capas del sistema y responsabilidades
 
-### 1. `interfaces/cli`
-- Recoge la entrada del usuario.
-- Expone la selección explícita del agente.
-- Muestra la respuesta final y referencias a outputs.
+### 1. `interfaces/web`
+- Superficie principal del producto.
+- Permite lanzar runs, revisar resultados, consultar runs persistidos, consultar artifacts y ver estado operativo.
+- No implementa lógica analítica.
+- Consume la API local del mismo repositorio.
+- La entrada documentada del dataset en esta fase se hace por ruta manual local.
 
-### 2. `application`
-- Contiene el caso de uso principal de ejecución.
-- Orquesta el flujo sin implementar detalles de infraestructura.
-- Traduce la petición externa al flujo interno del sistema.
+### 2. `interfaces/api`
+- Expone contratos locales para el producto.
+- Publica endpoints mínimos de ejecución, listado de runs, consulta de runs, artifacts y health.
+- Traduce peticiones externas al caso de uso del sistema.
+- Recibe la ruta manual local al dataset y construye el `RunRequest` interno.
+- No duplica lógica de runtime o agente.
 
-### 3. `runtime`
+### 3. `interfaces/cli`
+- Se mantiene como interfaz operativa y técnica.
+- Sirve para validación manual, smoke tests y soporte.
+- Debe seguir reutilizando el mismo caso de uso principal.
+
+### 4. `application`
+- Contiene los casos de uso del sistema.
+- Es la frontera estable entre interfaces y core de ejecución.
+- Debe seguir siendo reutilizable por CLI, API y futuras interfaces.
+
+### 5. `runtime`
+- Coordina la ejecución del run.
 - Crea o recupera sesión.
-- Crea el run.
-- Valida la solicitud inicial.
+- Crea el run y gestiona sus estados.
 - Resuelve el agente mediante el `Agent Registry`.
-- Coordina la preparación del dataset y la ejecución del agente.
+- Coordina la preparación del dataset, la ejecución del agente y la persistencia de outputs.
+- En la evolución prevista deberá apoyarse en metadata persistida localmente para exponer historial de runs.
 
-### 4. `agents/data_analyst`
-- Recibe un contexto estructurado.
-- Analiza el dataset cargado en DuckDB.
-- Devuelve una salida estructurada, no una respuesta ligada a la CLI.
+### 6. `agents/data_analyst`
+- Único agente real del sistema en esta fase.
+- Analiza el dataset ya preparado.
+- Produce una salida estructurada y trazable.
 
-### 5. `data`
-- Valida la ruta y el formato del archivo.
-- Carga el dataset local.
+### 7. `data`
+- Valida ruta y formato.
+- Carga el dataset en DuckDB.
 - Genera metadata mínima del dataset.
-- Lo deja disponible para consulta local en DuckDB.
+- Deja el dataset listo para consulta del agente.
 
-### 6. `artifacts`
-- Define el manifiesto de outputs del run.
-- Organiza tablas, gráficos y respuesta generada como salidas trazables.
+### 8. `artifacts`
+- Persiste la respuesta y outputs del run.
+- Mantiene el manifiesto de artifacts.
+- Debe poder servir tanto a CLI como a API/UI.
+- Comparte espacio conceptual con la persistencia local mínima de metadata de runs.
 
-### 7. `adapters`
-- Aíslan integraciones concretas con Ollama, DuckDB y almacenamiento local.
-- Evitan acoplar dependencias externas al core.
+### 9. `adapters`
+- Aíslan integraciones con DuckDB, Ollama y filesystem.
+- No arrancan procesos locales ni hacen auto-start del proveedor.
+- Traducen errores de dependencias externas a contratos del sistema.
 
-### 8. `observability`
-- Proporciona logging, errores tipados y trazabilidad mínima por `session_id` y `run_id`.
+### 10. `observability`
+- Debe cubrir logs estructurados, correlación por `session_id` y `run_id`, health y readiness.
+- Debe crecer como capacidad transversal del producto, no como lógica de interfaz.
+- Desde la Fase 1 ya puede alojar un servicio compartido de readiness/configuración reutilizable por CLI ahora y por API/UI más adelante.
 
-## Flujo end-to-end de una ejecución
-1. La CLI recibe `agent_id`, `dataset_path`, `user_prompt` y opcionalmente `session_id`.
-2. `application` invoca el caso de uso principal.
-3. `runtime` valida la petición inicial.
-4. `runtime` crea o recupera la sesión y abre un nuevo run.
-5. `runtime` usa `Agent Registry` para resolver el agente solicitado.
-6. `data` valida el archivo, detecta formato, lo carga en DuckDB y genera metadata básica.
-7. `runtime` construye el contexto estructurado de ejecución.
-8. `data_analyst` usa ese contexto para analizar y producir una salida estructurada.
-9. `artifacts` registra los outputs del run.
-10. La CLI renderiza la salida final para el usuario.
+## Flujos principales
+
+### Flujo principal del producto
+1. La UI local llama a la API local.
+2. La API recibe `agent_id`, `dataset_path`, `user_prompt` y `session_id?`.
+3. `application` invoca el caso de uso principal.
+4. `runtime` valida, crea sesión/run y coordina el flujo.
+5. `data` carga y perfila el dataset.
+6. `runtime` construye el contexto del agente.
+7. `data_analyst` analiza el dataset usando DuckDB y Ollama.
+8. `artifacts` persiste la respuesta y outputs.
+9. La persistencia local de metadata permite listar y consultar runs posteriores.
+10. La API devuelve estado, resumen y referencias.
+11. La UI renderiza narrativa, artifacts y estado operativo.
+
+### Flujo operativo por CLI
+1. La CLI puede exponer `status`, `config` y `run`.
+2. `status`/`config` llaman a casos de uso ligeros de `application` apoyados en `observability`.
+3. `run` recibe `agent_id`, `dataset_path`, `user_prompt` y `session_id?`.
+4. `application` invoca el mismo caso de uso principal.
+5. El resto del flujo es idéntico al producto.
+
+## Health y readiness
+El producto necesita dos superficies operativas explícitas:
+- **health de aplicación**: en Fase 1 confirma que el wiring/config local del producto es válido y que la superficie local puede operar; cuando exista API, esta semántica se reutiliza en `GET /health`;
+- **health del proveedor**: confirma que Ollama responde y que el modelo requerido está disponible.
+
+Esto no cambia el core analítico, pero sí forma parte de la arquitectura del producto.
 
 ## Papel del runtime
-El `runtime` es la pieza central de ejecución del MVP. Su papel es:
-- recibir la solicitud ya parseada;
-- gestionar sesión y run;
-- coordinar la preparación del dataset;
-- resolver el agente correcto;
-- invocar al agente y devolver su resultado.
+El `runtime` sigue siendo la pieza central del sistema. Su responsabilidad no cambia:
+- coordinar el run;
+- gestionar sesión y tracking;
+- preparar el dataset;
+- resolver el agente;
+- invocar al agente;
+- cerrar el run con resultado o error.
 
-El `runtime` **no** decide estrategia de negocio ni interpreta intención para escoger un agente automáticamente.
+El `runtime` **no**:
+- decide qué agente conviene;
+- hace routing;
+- interpreta intención del usuario;
+- incorpora lógica de UI;
+- expone HTTP directamente.
 
 ## Papel del Agent Registry
-El `Agent Registry` existe para permitir escalabilidad futura sin complicar el MVP.
+El `Agent Registry` sigue siendo ligero:
+- acepta `agent_id`;
+- resuelve la implementación disponible;
+- devuelve configuración estática mínima;
+- falla con error claro si el agente no existe.
 
-Su responsabilidad en esta fase es solo:
-- aceptar un `agent_id`;
-- resolverlo a una implementación disponible;
-- exponer configuración estática mínima asociada al agente.
+No es un planner encubierto ni una capa de routing.
 
-El `Agent Registry` **no**:
-- piensa;
-- enruta;
-- reescribe prompts;
-- decide qué agente conviene;
-- actúa como Planner encubierto.
+## Estructura objetivo del monorepo
+Sin reabrir la arquitectura del core, la dirección documental del repositorio pasa a ser:
+- `interfaces/web`
+- `interfaces/api`
+- `interfaces/cli`
+- `application`
+- `runtime`
+- `agents/data_analyst`
+- `data`
+- `artifacts`
+- `adapters`
+- `observability`
+- `tests`
 
-## Límites del MVP
+## Límites actuales del producto
 - Un solo agente real: `data_analyst`.
 - Un único dataset por run.
-- Solo archivos locales soportados.
+- Solo archivos locales soportados mediante ruta manual.
 - Solo DuckDB como motor.
-- Solo CLI como interfaz.
+- Solo Ollama local como proveedor del modelo.
 - Sin multi-agent real.
-- Sin API, frontend, auth, colas, RAG ni catálogo avanzado.
+- Sin auth ni multiusuario.
+- Sin backend hosted.
+- Sin RAG ni catálogo avanzado.
 
-## Crecimiento futuro permitido
-Sin comprometer la implementación actual, esta arquitectura permite:
-- añadir nuevos agentes detrás del `Agent Registry`;
-- incorporar nuevas interfaces encima del mismo core;
-- introducir configuraciones específicas por agente;
-- ampliar el catálogo de adapters si el producto lo exige.
+## Evolución permitida a continuación
+Sin comprometer el core actual, esta arquitectura permite:
+- añadir UI web local;
+- añadir API local estable;
+- añadir historial persistente local de runs;
+- mejorar observabilidad y health/readiness;
+- preparar packaging y distribución local;
+- reforzar CI y release.
 
-Ese crecimiento futuro debe ocurrir sin romper tres reglas:
-- mantener selección explícita del agente mientras el producto siga simple;
-- no mezclar ejecución con routing inteligente sin una decisión nueva formal;
-- no degradar la separación entre core, adapters e interfaces.
+La regla sigue siendo la misma: **hacer crecer el producto sin rehacer el core**.

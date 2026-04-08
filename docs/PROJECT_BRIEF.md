@@ -1,55 +1,79 @@
-# PROJECT_BRIEF
+﻿# PROJECT_BRIEF
 
-## Objetivo del proyecto
-Construir un MVP local-first que permita ejecutar un agente de análisis sobre un dataset externo entregado como archivo local, obtener respuestas útiles en lenguaje natural y dejar una base preparada para crecer sin rehacer la arquitectura.
+## Objetivo del producto
+Convertir el MVP local-first ya implementado en un **producto usable** que permita a una persona técnica o semitécnica analizar datasets locales mediante una experiencia más accesible, sin perder control explícito sobre el archivo, el agente, los artifacts y la ejecución local.
+
+La siguiente fase no persigue “volver a construir el MVP”, sino **llevarlo a un formato de producto** con:
+- interfaz web principal;
+- API local;
+- CLI mantenida para soporte operativo;
+- operación local clara y diagnósticos reproducibles.
 
 ## Problema que resuelve
-Hoy, analizar archivos de datos externos suele exigir demasiados pasos manuales, herramientas dispersas y poca trazabilidad. Los analistas de datos todavía pierden tiempo cargando archivos, inspeccionando esquemas, limpiando contexto, lanzando consultas, generando visualizaciones y redactando conclusiones por separado.
+Analizar datasets externos sigue requiriendo demasiadas herramientas, demasiados pasos manuales y muy poca trazabilidad. El MVP ya demostró que `3_agents` puede reducir esa fricción. La etapa producto debe resolver ahora otro problema: **hacer esa capacidad utilizable, entendible y operable fuera de una demo técnica por CLI**.
 
-`3_agents` nace para reducir al máximo ese trabajo manual usando la capacidad de razonamiento de un modelo local. La idea no es solo analizar datos, sino automatizar el flujo completo de análisis de forma controlada: elegir un agente, pasar una ruta local, formular una pregunta y recibir un análisis consistente, trazable y ejecutado íntegramente en local.
+## Usuario objetivo
+Usuario inicial del producto:
+- persona técnica o semitécnica;
+- trabaja en local y quiere control explícito sobre el archivo y el análisis;
+- necesita una forma simple de lanzar un run, revisar resultados y localizar artifacts;
+- no quiere depender de un backend remoto para la capacidad principal del sistema.
 
-## Usuario y flujo principal
-Usuario inicial:
-- persona técnica o semitécnica que descarga un dataset y quiere analizarlo con ayuda de un agente;
-- trabaja en local y quiere control explícito sobre el archivo y el agente ejecutado.
+## Experiencia objetivo
+Flujo principal deseado en la siguiente etapa:
+1. el usuario abre la interfaz web local;
+2. verifica que el sistema y Ollama están listos;
+3. selecciona el agente disponible;
+4. indica una ruta manual local al dataset;
+5. formula la pregunta;
+6. el sistema prepara el dataset en DuckDB;
+7. el agente ejecuta el análisis;
+8. el usuario revisa narrativa, hallazgos, artifacts y estado del run.
 
-Flujo principal:
-1. el usuario selecciona el agente;
-2. indica la ruta local del dataset;
-3. formula la pregunta;
-4. el sistema prepara el dataset en DuckDB;
-5. el agente analiza y devuelve una salida estructurada y trazable.
+La CLI seguirá permitiendo:
+- validación manual;
+- soporte técnico;
+- smoke tests;
+- operación avanzada o scripting local.
 
-## Alcance del MVP
-- Un único agente real: `data_analyst`.
-- Selección explícita de agente.
-- Un dataset principal por run.
-- Archivos locales como fuente de entrada: `csv`, `xlsx`, `parquet`.
-- DuckDB como único motor de datos.
-- DeepSeek-R1:8b vía Ollama como modelo fijo del agente.
-- CLI como única interfaz de ejecución inicial.
-- Trazabilidad básica por sesión y run.
-- Salida estructurada con narrativa, hallazgos y referencias a artefactos.
+## Alcance funcional vigente
+La fase producto mantiene congelado el núcleo funcional actual:
+- un único agente real: `data_analyst`;
+- selección explícita del agente;
+- un dataset principal por run;
+- archivos locales como fuente de entrada mediante ruta manual: `csv`, `xlsx`, `parquet`;
+- DuckDB como único motor de datos;
+- `deepseek-r1:8b` vía Ollama como modelo fijo;
+- salida estructurada y trazable con artifacts.
 
-## No-objetivos
-No forman parte de este MVP:
-- frontend;
-- API;
+## No-objetivos actuales
+No forman parte de esta etapa:
+- backend hosted;
+- auth;
+- multiusuario;
 - Planner;
 - routing automático;
 - multi-agent real;
 - RAG;
-- multi-dataset por run;
+- varios datasets por run;
 - catálogo avanzado de datasets;
-- autenticación, colas o infraestructura distribuida.
+- infraestructura distribuida.
 
-## Restricciones
-- Local-first.
-- Alcance pequeño y controlado.
+## Restricciones activas
+- Local-first como decisión de producto.
+- Monorepo único.
 - Sin sobreingeniería.
 - Sin dependencias nuevas sin justificación clara.
-- El modelo del agente es fijo en esta fase.
-- El core debe quedar reutilizable por futuras interfaces sin duplicar lógica.
+- El core actual debe seguir siendo reutilizable por CLI, API y UI.
+- La UI y la API no deben duplicar lógica que hoy vive en `application` y `runtime`.
+- La entrada documentada del dataset sigue siendo una ruta manual local, coherente con el patrón actual del repositorio.
 
-## Entregable real del vertical slice MVP
-Un flujo completo en CLI donde el usuario pueda ejecutar `data_analyst` sobre un archivo local real, recibir un análisis útil y reproducible, y disponer de trazabilidad mínima del run y de los outputs generados.
+## Resultado esperado de la siguiente fase
+Un producto local-first en el que:
+- el core actual siga intacto como base;
+- exista una API local mínima;
+- exista una interfaz web principal usable;
+- el estado operativo del proveedor local sea visible;
+- exista historial persistente local de runs;
+- los runs y artifacts sean más fáciles de revisar;
+- la operación y la distribución local sean más claras.

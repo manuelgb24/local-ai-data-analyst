@@ -1,202 +1,185 @@
 ﻿# CONTRACTS
 
 ## Propósito del documento
-Este documento fija los contratos funcionales mínimos del MVP para que la implementación mantenga límites claros entre interfaz, runtime, capa de datos, adapters y agente. Define comportamiento esperado e interfaces mínimas; no pretende ser una especificación exhaustiva ni un contrato enterprise.
+Este documento fija los contratos funcionales del sistema en su estado actual:
+- contratos del **core MVP ya implementado**;
+- contratos mínimos de la **siguiente fase de producto** para API local y UI.
+
+No pretende diseñar todavía un backend enterprise ni una plataforma multiusuario. Define solo lo necesario para mantener límites claros entre interfaz web, API local, CLI, runtime, capa de datos, agente y adapters.
 
 ## Convenciones de lectura
 - `campo`: obligatorio.
 - `campo?`: opcional.
-- Las colecciones pueden venir vacías cuando el contrato lo permita, pero no deben cambiar de significado entre runs.
-- Todo el documento asume el MVP local-first: un solo agente real, un solo dataset principal por run, DuckDB como motor y Ollama como adapter LLM.
+- Las colecciones pueden venir vacías cuando el contrato lo permita, pero no deben cambiar de significado entre ejecuciones equivalentes.
+- Todo el documento asume:
+  - local-first;
+  - un solo agente real;
+  - un solo dataset principal por run;
+  - ruta manual local al dataset;
+  - DuckDB local;
+  - Ollama local;
+  - API local sin auth en esta fase.
 
 ---
 
 ## 1. RunRequest
 
 ### Propósito
-Representa la solicitud de ejecución que entra en el sistema para lanzar un run analítico.
+Representa la solicitud interna de ejecución que entra en el core para lanzar un run analítico.
 
 ### Campos
-- `agent_id`: identificador del agente a ejecutar.
-- `dataset_path`: ruta local al archivo a analizar.
-- `user_prompt`: petición en lenguaje natural del usuario.
-- `session_id?`: identificador opcional para continuar una sesión previa.
+- `agent_id`
+- `dataset_path`
+- `user_prompt`
+- `session_id?`
 
-### Responsabilidad
-Servir como punto de entrada estructurado para el flujo de ejecución del MVP.
-
-### Invariantes y reglas mínimas
-- Debe referirse a un solo dataset principal por run.
-- `agent_id` debe poder resolverse en el `Agent Registry`.
-- `dataset_path` debe apuntar a un archivo local, no a una URL.
-- El formato esperado del archivo es `csv`, `xlsx` o `parquet`.
+### Reglas mínimas
+- Se refiere a un único dataset principal por run.
+- `agent_id` debe resolverse en el `Agent Registry`.
+- `dataset_path` debe apuntar a un archivo local.
+- Formatos soportados: `csv`, `xlsx`, `parquet`.
 - `user_prompt` no puede ser vacío.
 
-### Encaje en el flujo general
-La CLI construye este contrato y lo entrega al caso de uso principal. A partir de aquí, el runtime gestiona el resto del flujo.
-
-### Estados mínimos del run
-- `created`: la solicitud fue aceptada y ya existe `run_id`.
-- `preparing_dataset`: el sistema está validando, cargando o perfilando el dataset.
-- `running_agent`: el dataset ya está listo y el agente está ejecutándose.
-- `succeeded`: el run terminó con `AgentResult` y `ArtifactManifest` consistentes.
-- `failed`: el run terminó con un error del contrato mínimo de errores.
-
-No hace falta introducir más estados en este MVP.
+### Encaje
+Lo construyen CLI o API antes de invocar el caso de uso principal.
 
 ---
 
-## 2. DatasetProfile
+## 2. Estados mínimos del run
+
+Estados reconocidos del run:
+- `created`
+- `preparing_dataset`
+- `running_agent`
+- `succeeded`
+- `failed`
+
+No hace falta introducir más estados mientras el producto siga simple.
+
+---
+
+## 3. DatasetProfile
 
 ### Propósito
-Representar la metadata mínima del dataset ya validado y cargado para que el agente pueda analizarlo con contexto suficiente.
+Representar la metadata mínima del dataset ya validado y cargado.
 
 ### Campos
-- `source_path`: ruta original del archivo.
-- `format`: tipo detectado del archivo (`csv`, `xlsx`, `parquet`).
-- `table_name`: nombre de la tabla o vista registrada en DuckDB para este run.
-- `schema`: lista ordenada de columnas con nombre y tipo detectado.
-- `row_count`: número de filas cargadas.
-- `nulls?`: resumen básico de nulos por columna, si se calcula.
-- `sample?`: muestra pequeña y serializable de filas, si se expone.
+- `source_path`
+- `format`
+- `table_name`
+- `schema`
+- `row_count`
+- `nulls?`
+- `sample?`
 
-### Responsabilidad
-Describir el dataset disponible para análisis sin mezclar esta metadata con resultados analíticos.
-
-### Invariantes y reglas mínimas
-- Debe corresponder exactamente al dataset del run actual.
+### Reglas mínimas
+- Corresponde exactamente al dataset del run actual.
 - No contiene hallazgos ni interpretación.
-- Debe poder construirse después de una carga válida a DuckDB.
-- `table_name` debe ser el identificador que el agente pueda usar para consultar el dataset cargado.
-
-### Encaje en el flujo general
-La capa de datos lo genera tras validar y cargar el archivo. El runtime lo incluye después dentro del contexto que recibe el agente.
+- `table_name` es el identificador usable por el agente en DuckDB.
 
 ---
 
-## 3. AgentExecutionContext
+## 4. AgentExecutionContext
 
 ### Propósito
 Agrupar el contexto estructurado mínimo que necesita el agente para ejecutar el análisis.
 
 ### Campos
-- `run_id`: identificador único del run actual.
-- `session_id`: identificador de la sesión activa.
-- `dataset_profile`: metadata del dataset disponible.
-- `duckdb_context`: referencia o handle necesario para consultar el dataset cargado.
-- `output_dir`: ubicación reservada para outputs del run.
-
-### Responsabilidad
-Entregar al agente todo el contexto operativo necesario sin exponerle responsabilidades de sesión, routing o parsing de interfaz.
-
-### Invariantes y reglas mínimas
-- Siempre pertenece a un único `run_id`.
-- Debe contener un `DatasetProfile` válido.
-- Debe apuntar a un contexto DuckDB listo para consulta.
-- `output_dir` debe pertenecer al run actual.
-- No debe contener lógica de render de CLI.
-
-### Encaje en el flujo general
-El runtime construye este contrato después de preparar el dataset y antes de invocar al agente.
-
-### Nota de consistencia
-El nombre congelado para este campo en el MVP es `duckdb_context`. Debe usarse de forma uniforme en la documentación y en la implementación.
-
----
-
-## 4. AgentResult
-
-### Propósito
-Definir la salida estructurada del agente tras completar un análisis.
-
-### Campos
-- `narrative`: respuesta principal en lenguaje natural.
-- `findings`: lista de hallazgos concretos.
-- `sql_trace`: lista ordenada de consultas o intentos de consulta usados durante el análisis.
-- `tables`: lista de resultados tabulares relevantes para la respuesta.
-- `charts`: lista de gráficos generados o referenciados por la respuesta.
-- `recommendations?`: siguientes pasos o recomendaciones accionables.
-- `artifact_manifest`: índice de outputs del run.
-
-### Responsabilidad
-Separar el resultado analítico del modo en que luego la CLI lo renderiza al usuario.
-
-### Invariantes y reglas mínimas
-- Debe pertenecer a un único run.
-- Debe ser interpretable sin depender del renderer CLI.
-- No debe incluir routing, selección de agente ni control de sesión.
-- `artifact_manifest` debe estar asociado al mismo run.
-- `findings`, `sql_trace`, `tables` y `charts` pueden venir vacíos, pero deben mantener formato consistente.
-
-### Formato esperado de `sql_trace`
-`sql_trace` representa la traza analítica del run, no logs internos del motor. Cada entrada debe incluir:
-- `statement`: SQL ejecutado o intentado.
-- `status`: resultado mínimo de la entrada (`ok` o `error`).
-- `purpose?`: motivo breve de esa consulta, si se quiere exponer.
-- `rows_returned?`: número de filas devueltas, si aplica.
-
-### Qué representan `tables` y `charts`
-- `tables` representa resultados tabulares relevantes para la respuesta final o exportados como artefactos. No representa todas las tablas internas, temporales o de staging del dataset.
-- `charts` representa visualizaciones generadas en el run y referenciables desde la respuesta. No representa componentes UI ni configuraciones de frontend.
-
-### Encaje en el flujo general
-El agente devuelve este contrato al runtime, y después la interfaz lo renderiza para el usuario final.
-
----
-
-## 5. ArtifactManifest
-
-### Propósito
-Indexar las salidas generadas por un run para mantener trazabilidad y reproducibilidad.
-
-### Campos
-- `run_id`: run al que pertenece el manifiesto.
-- `response_path?`: ubicación de la respuesta final persistida, si existe.
-- `table_paths`: ubicaciones de tablas exportadas del run.
-- `chart_paths`: ubicaciones de gráficos generados del run.
-
-### Responsabilidad
-Ofrecer una referencia unificada a los outputs del run sin mezclarla con la lógica de análisis.
-
-### Invariantes y reglas mínimas
-- Debe estar asociado obligatoriamente a un `run_id`.
-- Solo referencia outputs del run actual.
-- `table_paths` y `chart_paths` pueden ser colecciones vacías, pero no deben apuntar a outputs de otro run.
-
-### Encaje en el flujo general
-Se construye al final del run como índice de outputs y se incluye dentro de `AgentResult` para que runtime e interfaz puedan localizar las salidas generadas.
-
-### Nota de consistencia
-`ArtifactManifest` es un contrato propio del MVP. `AgentResult` lo referencia, pero no lo sustituye ni absorbe su responsabilidad.
-
----
-
-## 6. Contrato mínimo de errores
-
-### Propósito
-Dar un formato común a los errores del runtime, datos, adapters y agente sin inflar el sistema.
-
-### Campos
-- `code`: identificador estable y legible por máquina.
-- `message`: descripción corta y entendible del fallo.
-- `stage`: etapa donde ocurrió el error.
-- `details?`: contexto adicional útil para diagnóstico.
+- `run_id`
+- `session_id`
+- `dataset_profile`
+- `duckdb_context`
+- `output_dir`
 
 ### Reglas mínimas
-- `code` debe ser estable entre runs equivalentes.
-- `stage` debe mapear a una etapa reconocible del flujo, por ejemplo: `request_validation`, `dataset_preparation`, `agent_resolution`, `agent_execution`, `artifact_persistence`.
-- Este contrato es el esperado cuando un run termina en estado `failed`.
-- No hace falta modelar jerarquías complejas de excepciones en este documento.
+- Siempre pertenece a un único `run_id`.
+- Contiene un `DatasetProfile` válido.
+- Apunta a un contexto DuckDB listo para consulta.
+- `output_dir` pertenece al run actual.
+
+### Nota de consistencia
+El nombre congelado en esta fase sigue siendo `duckdb_context`.
 
 ---
 
-## 7. Interfaz mínima esperada del Agent Registry
+## 5. AgentResult
+
+### Propósito
+Definir la salida estructurada del agente tras completar el análisis.
+
+### Campos
+- `narrative`
+- `findings`
+- `sql_trace`
+- `tables`
+- `charts`
+- `recommendations?`
+- `artifact_manifest`
+
+### Reglas mínimas
+- Pertenece a un único run.
+- Se interpreta sin depender del renderer de CLI o UI.
+- No incluye routing, selección automática de agente ni control de sesión.
+- `findings`, `sql_trace`, `tables` y `charts` pueden venir vacíos.
+
+### Formato esperado de `sql_trace`
+Cada entrada debe incluir:
+- `statement`
+- `status` (`ok` o `error`)
+- `purpose?`
+- `rows_returned?`
+
+---
+
+## 6. ArtifactManifest
+
+### Propósito
+Indexar las salidas generadas por un run para mantener trazabilidad.
+
+### Campos
+- `run_id`
+- `response_path?`
+- `table_paths`
+- `chart_paths`
+
+### Reglas mínimas
+- Solo referencia outputs del run actual.
+- `table_paths` y `chart_paths` pueden venir vacíos.
+
+### Persistencia mínima actual
+- `response_path` apunta al menos a `response.md`.
+- `table_paths` apunta a JSON persistidos del run actual.
+- `chart_paths` puede venir vacío.
+
+---
+
+## 7. Contrato mínimo de errores del core
+
+### Propósito
+Dar un formato común a los errores del runtime, datos, adapters y agente.
+
+### Campos
+- `code`
+- `message`
+- `stage`
+- `details?`
+
+### Stages mínimos reconocibles
+- `request_validation`
+- `dataset_preparation`
+- `agent_resolution`
+- `agent_execution`
+- `artifact_persistence`
+
+---
+
+## 8. Interfaz mínima esperada del Agent Registry
 
 ### Responsabilidad mínima
-- Aceptar un `agent_id`.
-- Resolver ese `agent_id` a una implementación disponible.
-- Exponer la configuración estática mínima necesaria para ejecutar el agente resuelto.
-- Devolver un error del contrato mínimo si el agente no existe.
+- Aceptar `agent_id`.
+- Resolverlo a una implementación disponible.
+- Exponer configuración estática mínima.
+- Fallar si el agente no existe.
 
 ### Límites
 - No enruta.
@@ -206,31 +189,233 @@ Dar un formato común a los errores del runtime, datos, adapters y agente sin in
 
 ---
 
-## 8. Interfaz mínima esperada del adapter LLM
+## 9. Interfaz mínima esperada del adapter LLM
 
 ### Responsabilidad mínima
-- Recibir un prompt ya preparado por la capa agente.
-- Ejecutar la llamada al modelo fijo del MVP a través de Ollama.
-- Devolver el contenido generado por el modelo.
+- Recibir un prompt preparado por la capa agente.
+- Llamar al modelo fijo del sistema a través de Ollama.
+- Devolver contenido generado.
 - Traducir errores del proveedor al contrato mínimo de errores.
 
 ### Límites
 - No decide el agente.
-- No elige dinámicamente entre múltiples proveedores o modelos en este MVP.
-- No incorpora políticas complejas de routing, retries avanzados ni fallback multi-modelo.
+- No elige múltiples modelos o proveedores.
+- No introduce fallback complejo ni routing.
 
 ---
 
-## 9. Interfaz mínima esperada del loader/profiler de dataset
+## 10. Interfaz mínima esperada del loader/profiler de dataset
 
 ### Responsabilidad mínima
-- Recibir una ruta local de archivo.
+- Recibir una ruta local.
 - Validar existencia y formato soportado.
-- Cargar el dataset en DuckDB para el run actual.
-- Construir y devolver un `DatasetProfile` consistente con esa carga.
-- Devolver error del contrato mínimo si la validación o la carga falla.
+- Cargar el dataset en DuckDB.
+- Construir y devolver un `DatasetProfile`.
+- Fallar con error claro si la validación o carga falla.
 
 ### Límites
 - No resuelve múltiples datasets por run.
-- No incorpora catálogo, sincronización remota ni conectores externos.
-- No mezcla profiling técnico con hallazgos analíticos del agente.
+- No incorpora catálogo ni conectores remotos.
+- No mezcla profiling técnico con hallazgos analíticos.
+
+---
+
+## 11. Contratos mínimos post-MVP para API local y UI
+
+Estos contratos todavía no están implementados como superficie pública, pero quedan fijados como dirección de producto.
+
+### 11.1 CreateRunRequest
+
+#### Propósito
+Payload mínimo que recibe la API local para crear un run.
+
+#### Campos
+- `agent_id`
+- `dataset_path`
+- `user_prompt`
+- `session_id?`
+
+#### Regla
+Debe mapear 1:1 al contrato interno `RunRequest` sin introducir semántica adicional.
+
+### 11.2 RunSummary
+
+#### Propósito
+Representar un run en listados o vistas resumidas.
+
+#### Campos
+- `run_id`
+- `session_id`
+- `agent_id`
+- `dataset_path`
+- `status`
+- `created_at`
+- `updated_at`
+
+#### Regla
+No incluye el contenido completo del análisis ni reemplaza `RunDetail`.
+
+#### Regla de persistencia
+Debe alimentarse de metadata persistida localmente, no solo de memoria de proceso.
+
+### 11.3 RunDetail
+
+#### Propósito
+Representar el detalle consultable de un run desde API/UI.
+
+#### Campos
+- `run_id`
+- `session_id`
+- `agent_id`
+- `dataset_profile?`
+- `status`
+- `result?`
+- `error?`
+- `artifact_manifest?`
+- `created_at`
+- `updated_at`
+
+#### Regla
+Si el run no terminó todavía, `result` puede no existir.
+
+#### Regla de persistencia
+Debe alimentarse de metadata persistida localmente, no solo de memoria de proceso.
+
+### 11.4 ArtifactListItem
+
+#### Propósito
+Representar un artifact individual en API/UI.
+
+#### Campos
+- `name`
+- `type`
+- `path`
+- `run_id`
+- `size_bytes?`
+
+#### Tipos mínimos previstos
+- `response`
+- `table`
+- `chart`
+
+### 11.5 ApplicationHealth
+
+#### Propósito
+Exponer el estado operativo interno de la aplicación local antes de que exista liveness HTTP real.
+
+#### Campos
+- `status`
+- `ready`
+- `default_agent_id`
+- `artifacts_root`
+- `checks`
+- `details?`
+
+#### Regla
+En la Fase 1 debe representar wiring/configuración local válida del producto, no “servidor HTTP levantado”. El futuro `GET /health` debe heredar esta semántica mínima.
+
+### 11.6 ProveedorHealth
+
+#### Propósito
+Exponer el estado operativo del proveedor local requerido por el producto.
+
+#### Campos
+- `status`
+- `ready`
+- `proveedor`
+- `endpoint`
+- `binary_available`
+- `binary_path?`
+- `reachable`
+- `version?`
+- `model`
+- `model_available`
+- `details?`
+
+#### Regla
+Debe servir para diagnosticar si Ollama responde y si `deepseek-r1:8b` está disponible.
+
+### 11.7 AppConfig
+
+#### Propósito
+Exponer configuración efectiva mínima útil para la UI local.
+
+#### Campos
+- `default_agent_id`
+- `supported_dataset_formats`
+- `proveedor_name`
+- `proveedor_endpoint`
+- `required_model`
+
+#### Regla
+No debe exponer todavía secretos ni configuración enterprise.
+
+#### Regla adicional
+La CLI actual (`status` / `config`) puede exponer esta configuración directamente y la futura API local debe heredar el mismo shape mínimo.
+
+### 11.8 ApiError
+
+#### Propósito
+Dar formato estable a errores de la API local.
+
+#### Campos
+- `code`
+- `message`
+- `status`
+- `details?`
+- `trace_id?`
+
+#### Regla
+Debe poder mapear errores del core sin perder legibilidad para UI y soporte.
+
+---
+
+## 12. Persistencia local mínima prevista
+
+La siguiente etapa de producto asume una persistencia local mínima de metadata de runs con estas reglas:
+- debe ser file-backed;
+- debe vivir junto al espacio local de artifacts o en una ubicación equivalente del mismo entorno local;
+- no requiere introducir todavía una base de datos adicional;
+- debe permitir `GET /runs`, `GET /runs/{run_id}` y `GET /runs/{run_id}/artifacts` sin depender solo del proceso actual.
+
+---
+
+## 13. Endpoints mínimos documentados para la siguiente fase
+
+### `POST /runs`
+- Crea un run nuevo.
+- Entrada: `CreateRunRequest`.
+- Salida mínima: `RunDetail` inicial o `RunSummary` con `run_id`.
+
+### `GET /runs`
+- Devuelve el listado de runs persistidos localmente.
+- Salida: lista de `RunSummary`.
+
+### `GET /runs/{run_id}`
+- Devuelve el estado y detalle del run.
+- Salida: `RunDetail`.
+
+### `GET /runs/{run_id}/artifacts`
+- Devuelve la lista de artifacts persistidos del run.
+- Salida: lista de `ArtifactListItem`.
+
+### `GET /health`
+- Confirma que la aplicación/API local está levantada.
+- Salida mínima: `ApplicationHealth`.
+- Debe heredar la semántica operativa ya expuesta por la CLI en Fase 1.
+
+### `GET /health/proveedor`
+- Expone `ProveedorHealth`.
+- Sirve para readiness del proveedor local y del modelo requerido.
+
+---
+
+## 14. Límites explícitos de estos contratos
+- No se diseña auth.
+- No se diseña multiusuario.
+- No se diseña backend remoto.
+- No se diseñan colas ni workers distribuidos.
+- No se diseña soporte multi-agent real.
+- No se diseñan múltiples datasets por run.
+
+La intención es fijar una API local mínima y una semántica estable para la UI, no adelantar arquitectura fuera de scope.
