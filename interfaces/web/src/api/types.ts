@@ -35,6 +35,16 @@ export interface CreateRunRequest {
   user_prompt: string;
 }
 
+export interface RunSummary {
+  run_id: string;
+  session_id: string;
+  agent_id: string;
+  dataset_path: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DatasetColumn {
   name: string;
   type: string;

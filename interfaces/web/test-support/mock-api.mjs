@@ -4,6 +4,8 @@ const hostname = "127.0.0.1";
 const port = 8010;
 
 let scenario = "ready";
+let createdRunCount = 0;
+let runs = [];
 
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
@@ -33,24 +35,28 @@ function parseJsonBody(request) {
   });
 }
 
-function buildRunDetail(datasetPath, prompt) {
+function buildDatasetProfile(datasetPath, tableName) {
   return {
-    run_id: "run-ui-success",
-    session_id: "session-ui-001",
+    source_path: datasetPath,
+    format: datasetPath.split(".").pop().toLowerCase(),
+    table_name: tableName,
+    schema: [
+      { name: "store", type: "INTEGER" },
+      { name: "sales", type: "DOUBLE" },
+    ],
+    row_count: 2,
+  };
+}
+
+function createSucceededRun({ runId, sessionId, datasetPath, prompt, createdAt, updatedAt }) {
+  const detail = {
+    run_id: runId,
+    session_id: sessionId,
     agent_id: "data_analyst",
     status: "succeeded",
-    created_at: "2026-04-15T12:00:00Z",
-    updated_at: "2026-04-15T12:00:04Z",
-    dataset_profile: {
-      source_path: datasetPath,
-      format: datasetPath.split(".").pop().toLowerCase(),
-      table_name: "dataset_run_ui_001",
-      schema: [
-        { name: "store", type: "INTEGER" },
-        { name: "sales", type: "DOUBLE" },
-      ],
-      row_count: 2,
-    },
+    created_at: createdAt,
+    updated_at: updatedAt,
+    dataset_profile: buildDatasetProfile(datasetPath, `dataset_${runId}`),
     result: {
       narrative: `Narrativa UI para: ${prompt}`,
       findings: [
@@ -69,28 +75,154 @@ function buildRunDetail(datasetPath, prompt) {
       ],
       charts: [],
       artifact_manifest: {
-        run_id: "run-ui-success",
-        response_path: "artifacts/runs/run-ui-success/response.md",
-        table_paths: ["artifacts/runs/run-ui-success/tables/preview.json"],
+        run_id: runId,
+        response_path: `artifacts/runs/${runId}/response.md`,
+        table_paths: [`artifacts/runs/${runId}/tables/preview.json`],
         chart_paths: [],
       },
       recommendations: ["Revisar la distribucion de ventas por tienda."],
     },
     artifact_manifest: {
-      run_id: "run-ui-success",
-      response_path: "artifacts/runs/run-ui-success/response.md",
-      table_paths: ["artifacts/runs/run-ui-success/tables/preview.json"],
+      run_id: runId,
+      response_path: `artifacts/runs/${runId}/response.md`,
+      table_paths: [`artifacts/runs/${runId}/tables/preview.json`],
       chart_paths: [],
     },
   };
+
+  return {
+    summary: {
+      run_id: runId,
+      session_id: sessionId,
+      agent_id: "data_analyst",
+      dataset_path: datasetPath,
+      status: "succeeded",
+      created_at: createdAt,
+      updated_at: updatedAt,
+    },
+    detail,
+    artifacts: [
+      {
+        name: "response.md",
+        type: "response",
+        path: `artifacts/runs/${runId}/response.md`,
+        run_id: runId,
+        size_bytes: 256,
+      },
+      {
+        name: "preview.json",
+        type: "table",
+        path: `artifacts/runs/${runId}/tables/preview.json`,
+        run_id: runId,
+        size_bytes: 128,
+      },
+    ],
+  };
 }
+
+function createFailedRun({
+  runId,
+  sessionId,
+  datasetPath,
+  code,
+  message,
+  stage,
+  createdAt,
+  updatedAt,
+  includeDatasetProfile = false,
+}) {
+  const detail = {
+    run_id: runId,
+    session_id: sessionId,
+    agent_id: "data_analyst",
+    status: "failed",
+    created_at: createdAt,
+    updated_at: updatedAt,
+    dataset_profile: includeDatasetProfile ? buildDatasetProfile(datasetPath, `dataset_${runId}`) : null,
+    result: null,
+    error: {
+      code,
+      message,
+      stage,
+      details:
+        stage === "dataset_preparation"
+          ? { dataset_path: datasetPath }
+          : { provider: "ollama" },
+    },
+    artifact_manifest: null,
+  };
+
+  return {
+    summary: {
+      run_id: runId,
+      session_id: sessionId,
+      agent_id: "data_analyst",
+      dataset_path: datasetPath,
+      status: "failed",
+      created_at: createdAt,
+      updated_at: updatedAt,
+    },
+    detail,
+    artifacts: [],
+  };
+}
+
+function buildSeedRuns() {
+  return [
+    createSucceededRun({
+      runId: "run-ui-latest",
+      sessionId: "session-ui-001",
+      datasetPath: "DatasetV1/Walmart_Sales.csv",
+      prompt: "Revisa el run persistido mas reciente",
+      createdAt: "2026-04-15T12:00:00Z",
+      updatedAt: "2026-04-15T12:00:04Z",
+    }),
+    createFailedRun({
+      runId: "run-ui-failed-history",
+      sessionId: "session-ui-000",
+      datasetPath: "DatasetV1/missing.csv",
+      code: "dataset_path_not_found",
+      message: "Dataset path does not exist",
+      stage: "dataset_preparation",
+      createdAt: "2026-04-15T11:15:00Z",
+      updatedAt: "2026-04-15T11:15:02Z",
+    }),
+  ];
+}
+
+function resetState(nextScenario = "ready") {
+  scenario = nextScenario;
+  createdRunCount = 0;
+  runs = buildSeedRuns();
+}
+
+function nextRunId(prefix) {
+  createdRunCount += 1;
+  return `${prefix}-${String(createdRunCount).padStart(3, "0")}`;
+}
+
+function listSummaries() {
+  return runs.map((run) => run.summary);
+}
+
+function findRun(runId) {
+  return runs.find((run) => run.summary.run_id === runId) ?? null;
+}
+
+function prependRun(run) {
+  runs = [run, ...runs];
+  return run;
+}
+
+resetState();
 
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://${hostname}:${port}`);
+  const pathSegments = url.pathname.split("/").filter(Boolean);
 
   if (request.method === "POST" && url.pathname === "/__scenario") {
     const payload = await parseJsonBody(request);
-    scenario = typeof payload.scenario === "string" ? payload.scenario : "ready";
+    resetState(typeof payload.scenario === "string" ? payload.scenario : "ready");
     sendJson(response, 200, { ok: true, scenario });
     return;
   }
@@ -178,6 +310,19 @@ const server = http.createServer(async (request, response) => {
     }
 
     if (scenario === "provider_down") {
+      prependRun(
+        createFailedRun({
+          runId: nextRunId("run-ui-failed"),
+          sessionId: "session-ui-provider-down",
+          datasetPath,
+          code: "llm_provider_unavailable",
+          message: "Ollama is unavailable for local generation",
+          stage: "agent_execution",
+          createdAt: "2026-04-15T12:20:00Z",
+          updatedAt: "2026-04-15T12:20:01Z",
+          includeDatasetProfile: true,
+        }),
+      );
       sendJson(response, 503, {
         code: "llm_provider_unavailable",
         message: "Ollama is unavailable for local generation",
@@ -194,6 +339,18 @@ const server = http.createServer(async (request, response) => {
     }
 
     if (scenario === "dataset_error" || datasetPath.toLowerCase().includes("missing")) {
+      prependRun(
+        createFailedRun({
+          runId: nextRunId("run-ui-failed"),
+          sessionId: "session-ui-dataset-error",
+          datasetPath,
+          code: "dataset_path_not_found",
+          message: "Dataset path does not exist",
+          stage: "dataset_preparation",
+          createdAt: "2026-04-15T12:25:00Z",
+          updatedAt: "2026-04-15T12:25:01Z",
+        }),
+      );
       sendJson(response, 400, {
         code: "dataset_path_not_found",
         message: "Dataset path does not exist",
@@ -209,28 +366,49 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
-    sendJson(response, 200, buildRunDetail(datasetPath, prompt));
+    const createdRun = prependRun(
+      createSucceededRun({
+        runId: nextRunId("run-ui-created"),
+        sessionId: "session-ui-created",
+        datasetPath,
+        prompt,
+        createdAt: "2026-04-15T12:30:00Z",
+        updatedAt: "2026-04-15T12:30:03Z",
+      }),
+    );
+    sendJson(response, 200, createdRun.detail);
     return;
   }
 
-  if (request.method === "GET" && url.pathname === "/runs/run-ui-success/artifacts") {
-    sendJson(response, 200, [
-      {
-        name: "response.md",
-        type: "response",
-        path: "artifacts/runs/run-ui-success/response.md",
-        run_id: "run-ui-success",
-        size_bytes: 256,
-      },
-      {
-        name: "preview.json",
-        type: "table",
-        path: "artifacts/runs/run-ui-success/tables/preview.json",
-        run_id: "run-ui-success",
-        size_bytes: 128,
-      },
-    ]);
+  if (request.method === "GET" && pathSegments.length === 1 && pathSegments[0] === "runs") {
+    sendJson(response, 200, listSummaries());
     return;
+  }
+
+  if (request.method === "GET" && pathSegments.length >= 2 && pathSegments[0] === "runs") {
+    const run = findRun(pathSegments[1]);
+    if (!run) {
+      sendJson(response, 404, {
+        code: "run_not_found",
+        message: `Run not found: ${pathSegments[1]}`,
+        status: 404,
+        details: {
+          run_id: pathSegments[1],
+        },
+        trace_id: "mock-trace-run-not-found",
+      });
+      return;
+    }
+
+    if (pathSegments.length === 2) {
+      sendJson(response, 200, run.detail);
+      return;
+    }
+
+    if (pathSegments.length === 3 && pathSegments[2] === "artifacts") {
+      sendJson(response, 200, run.artifacts);
+      return;
+    }
   }
 
   sendJson(response, 404, {

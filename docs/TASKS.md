@@ -113,6 +113,7 @@ Este documento solo lista las skills que tienen encaje directo con el roadmap ac
 ## Fase 4 — Historial persistente de runs y artifacts
 - **Objetivo**: hacer la trazabilidad del producto realmente reutilizable fuera del proceso actual.
 - **Por qué va cuarta**: una vez hay API y UI mínimas, el siguiente salto útil es poder consultar ejecuciones previas de forma persistente.
+- **Nota de implementación ya consolidada**: la base file-backed (`run.json` junto a artifacts) y los endpoints `GET /runs*` se adelantaron en Fase 2 para mantener contratos y documentación alineados; esta fase cierra la exposición web del historial y su hardening.
 - **Dependencias**:
   - Fase 2 completada;
   - preferiblemente Fase 3 iniciada o completada para aprovechar la visualización.

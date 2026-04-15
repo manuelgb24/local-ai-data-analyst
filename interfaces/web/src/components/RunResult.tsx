@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
 
-import type { ApiError, ArtifactListItem, CreateRunRequest, RunDetail, TableResult } from "../api/types";
+import type { ApiError, ArtifactListItem, RunDetail, RunSummary, TableResult } from "../api/types";
 
 import { ErrorBanner } from "./ErrorBanner";
 
 interface RunResultProps {
-  request: CreateRunRequest | null;
+  selectedRunSummary: RunSummary | null;
   runDetail: RunDetail | null;
   artifacts: ArtifactListItem[];
+  detailError: ApiError | null;
   artifactError: ApiError | null;
+  isLoading: boolean;
 }
 
 function formatValue(value: unknown): string {
@@ -106,53 +108,118 @@ function ArtifactList({ artifacts }: { artifacts: ArtifactListItem[] }) {
   );
 }
 
-export function RunResult({ request, runDetail, artifacts, artifactError }: RunResultProps) {
-  if (!runDetail) {
+function PersistedRunError({ runDetail }: { runDetail: RunDetail }) {
+  if (!runDetail.error) {
+    return null;
+  }
+
+  const details = runDetail.error.details ? JSON.stringify(runDetail.error.details, null, 2) : null;
+
+  return (
+    <article className="result-card result-error-card">
+      <h3>Error persistido</h3>
+      <p className="error-message">
+        <strong>{runDetail.error.code}</strong>: {runDetail.error.message}
+      </p>
+      <dl className="metadata-list">
+        <div>
+          <dt>Stage</dt>
+          <dd>{runDetail.error.stage}</dd>
+        </div>
+      </dl>
+      {details ? <pre className="details-block">{details}</pre> : null}
+    </article>
+  );
+}
+
+export function RunResult({
+  selectedRunSummary,
+  runDetail,
+  artifacts,
+  detailError,
+  artifactError,
+  isLoading,
+}: RunResultProps) {
+  if (isLoading && !selectedRunSummary) {
     return (
       <section className="panel">
         <div className="section-header">
           <div>
             <p className="eyebrow">Resultado</p>
-            <h2>Ultimo run</h2>
+            <h2>Run seleccionado</h2>
           </div>
         </div>
-        <p className="muted">Lanza un run para ver narrativa, hallazgos, tablas y artifacts.</p>
+        <p className="muted">Cargando detalle persistido...</p>
       </section>
     );
   }
+
+  if (!selectedRunSummary) {
+    return (
+      <section className="panel">
+        <div className="section-header">
+          <div>
+            <p className="eyebrow">Resultado</p>
+            <h2>Run seleccionado</h2>
+          </div>
+        </div>
+        <p className="muted">Lanza un run o selecciona uno del historial para revisar su detalle.</p>
+      </section>
+    );
+  }
+
+  const status = runDetail?.status ?? selectedRunSummary.status;
+  const sessionId = runDetail?.session_id ?? selectedRunSummary.session_id;
+  const agentId = runDetail?.agent_id ?? selectedRunSummary.agent_id;
 
   return (
     <section className="panel">
       <div className="section-header">
         <div>
           <p className="eyebrow">Resultado</p>
-          <h2>Ultimo run</h2>
+          <h2>Run seleccionado</h2>
         </div>
-        <span className={`status-chip ${runDetail.status === "succeeded" ? "status-ok" : "status-error"}`}>
-          {runDetail.status}
+        <span className={`status-chip ${status === "succeeded" ? "status-ok" : "status-error"}`}>
+          {status}
         </span>
       </div>
 
       <dl className="metadata-list">
         <div>
           <dt>Run ID</dt>
-          <dd>{runDetail.run_id}</dd>
+          <dd>{selectedRunSummary.run_id}</dd>
         </div>
         <div>
           <dt>Session ID</dt>
-          <dd>{runDetail.session_id}</dd>
+          <dd>{sessionId}</dd>
         </div>
         <div>
           <dt>Agente</dt>
-          <dd>{runDetail.agent_id}</dd>
+          <dd>{agentId}</dd>
         </div>
         <div>
           <dt>Dataset path</dt>
-          <dd>{request?.dataset_path ?? "-"}</dd>
+          <dd>{selectedRunSummary.dataset_path}</dd>
+        </div>
+        <div>
+          <dt>Creado</dt>
+          <dd>
+            <time dateTime={selectedRunSummary.created_at}>{selectedRunSummary.created_at}</time>
+          </dd>
+        </div>
+        <div>
+          <dt>Actualizado</dt>
+          <dd>
+            <time dateTime={selectedRunSummary.updated_at}>{selectedRunSummary.updated_at}</time>
+          </dd>
         </div>
       </dl>
 
-      {runDetail.dataset_profile ? (
+      {detailError ? <ErrorBanner title="No se pudo cargar el detalle persistido" error={detailError} /> : null}
+
+      {isLoading && !runDetail && !detailError ? <p className="muted">Cargando detalle persistido...</p> : null}
+
+      {runDetail?.dataset_profile ? (
         <article className="result-card">
           <h3>Perfil del dataset</h3>
           <dl className="metadata-list">
@@ -172,7 +239,9 @@ export function RunResult({ request, runDetail, artifacts, artifactError }: RunR
         </article>
       ) : null}
 
-      {runDetail.result ? (
+      {runDetail?.error ? <PersistedRunError runDetail={runDetail} /> : null}
+
+      {runDetail?.result ? (
         <>
           <article className="result-card">
             <h3>Narrativa</h3>

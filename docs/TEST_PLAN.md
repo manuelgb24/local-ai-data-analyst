@@ -73,10 +73,13 @@ Demostrar que la experiencia principal del producto funciona de forma completa.
 
 ### Debe cubrir
 - pantalla o estado de readiness;
+- historial persistente visible desde la carga inicial;
+- selección de un run previo desde la UI;
 - lanzamiento de un run desde la UI;
 - entrada por ruta manual local al dataset;
 - visualización de narrativa y hallazgos;
 - acceso a artifacts del run;
+- refresco del historial tras crear un run nuevo;
 - errores claros cuando falte proveedor, modelo o dataset válido.
 
 ### Tipos de prueba esperados
@@ -104,6 +107,7 @@ Asegurar que el sistema puede listar y recuperar runs más allá del proceso act
 - `GET /runs` con resultados coherentes;
 - `GET /runs/{run_id}` sobre runs persistidos;
 - consistencia entre historial y artifacts reales;
+- exposición del historial persistido en la UI sin bloquearse por readiness del proveedor;
 - disponibilidad del historial tras reinicio del proceso cuando la metadata persistida existe.
 
 ### Casos críticos
@@ -115,6 +119,7 @@ Asegurar que el sistema puede listar y recuperar runs más allá del proceso act
 
 ### Comando de referencia actual
 - `pytest tests/integration/test_api_endpoints.py -q`
+- `npm --prefix interfaces/web run test:e2e`
 
 ---
 
@@ -238,6 +243,8 @@ Uso esperado:
 ### Historial
 - el historial persiste si la metadata local existe;
 - el listado de runs no depende solo del proceso actual.
+- la UI puede abrir un run previo ya persistido.
+- la UI sigue pudiendo explorar historial aunque readiness bloquee nuevos submits.
 
 ### Operación
 - el sistema no finge readiness si Ollama no está listo;

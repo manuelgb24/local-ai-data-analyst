@@ -7,7 +7,7 @@ Dar una guía operativa mínima para arrancar y diagnosticar el sistema en su es
 Hoy el producto ya dispone de:
 - CLI operativa (`status`, `config`, `run`);
 - API local mínima para runs, health e historial persistido.
-- UI web local principal para readiness, ejecución del run actual y revisión de artifacts.
+- UI web local principal para readiness, lanzamiento de runs e historial persistido consultable.
 
 ## Requisitos mínimos
 - Python con dependencias del repo.
@@ -137,9 +137,11 @@ Por defecto la UI queda disponible en `http://127.0.0.1:4173`.
 ### 3. Recorrido mínimo esperado
 - abrir `http://127.0.0.1:4173`;
 - comprobar el readiness de aplicación y proveedor;
+- revisar que el historial persistido carga y que selecciona el run más reciente;
 - introducir `DatasetV1/Walmart_Sales.csv` como ruta manual;
 - lanzar el run con un prompt simple;
-- revisar narrativa, hallazgos, tablas y artifacts del último run.
+- revisar narrativa, hallazgos, tablas y artifacts del run seleccionado;
+- cambiar a un run previo del historial y verificar su detalle persistido aunque el proveedor no esté listo para nuevos submits.
 
 ## Health y readiness esperados
 Aunque la superficie HTTP todavía no esté implementada, el producto debe distinguir entre:
@@ -163,12 +165,13 @@ La futura API local deberá exponer ambos chequeos de forma explícita.
 La etapa futura aprobada sigue usando **ruta manual local** como entrada del dataset. Eso mantiene coherencia con el flujo actual del repositorio y con el contrato `dataset_path`.
 
 ## Historial persistente local actual
-La operación local ya puede consultar historial persistente de runs por API:
+La operación local ya puede consultar historial persistente de runs por API y por la UI web:
 - `GET /runs`;
 - `GET /runs/{run_id}`;
 - `GET /runs/{run_id}/artifacts`.
 
 La fuente de verdad para ese historial es la metadata file-backed que vive junto a cada run en el espacio de artifacts.
+La UI consume esos mismos contratos para listar runs previos, seleccionar un run y revisar su detalle/artifacts sin depender solo del proceso actual.
 
 ## Troubleshooting básico
 

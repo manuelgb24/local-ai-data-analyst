@@ -266,6 +266,67 @@ pre {
   font-weight: 700;
 }
 
+.run-history-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.run-history-button {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 16px;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.68);
+  color: inherit;
+  text-align: left;
+}
+
+.run-history-button-active {
+  border-color: rgba(96, 165, 250, 0.6);
+  background: rgba(30, 41, 59, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.24);
+}
+
+.run-history-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.run-history-path {
+  margin-bottom: 16px;
+  overflow-wrap: anywhere;
+}
+
+.run-history-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.run-history-meta div {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.run-history-meta dt {
+  font-size: 0.8rem;
+  color: #93c5fd;
+  margin-bottom: 6px;
+}
+
+.run-history-meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .table-wrapper {
   overflow-x: auto;
 }
@@ -294,6 +355,10 @@ th {
 
 .narrative-text {
   white-space: pre-wrap;
+}
+
+.result-error-card {
+  border-color: rgba(248, 113, 113, 0.34);
 }
 
 .details-block {

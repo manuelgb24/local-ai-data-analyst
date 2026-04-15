@@ -6,6 +6,7 @@ import type {
   ProveedorHealth,
   ReadinessState,
   RunDetail,
+  RunSummary,
 } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
@@ -117,6 +118,14 @@ export async function createRun(payload: CreateRunRequest): Promise<RunDetail> {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function fetchRuns(): Promise<RunSummary[]> {
+  return requestJson<RunSummary[]>("/runs");
+}
+
+export async function fetchRunDetail(runId: string): Promise<RunDetail> {
+  return requestJson<RunDetail>(`/runs/${encodeURIComponent(runId)}`);
 }
 
 export async function fetchRunArtifacts(runId: string): Promise<ArtifactListItem[]> {

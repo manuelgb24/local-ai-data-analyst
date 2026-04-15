@@ -8,3 +8,4 @@ interfaces/web/dist/
 interfaces/web/playwright-report/
 interfaces/web/test-results/
 interfaces/web/.vite/
+interfaces/web/*.tsbuildinfo

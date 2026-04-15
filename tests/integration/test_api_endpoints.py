@@ -210,6 +210,35 @@ def test_health_endpoints_reuse_operational_shapes(repo_tmp_path: Path) -> None:
     assert provider_response.json()["model_available"] is True
 
 
+def test_get_runs_returns_empty_list_when_no_metadata_exists(repo_tmp_path: Path) -> None:
+    artifacts_root = repo_tmp_path / "artifacts"
+    store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)
+    client = TestClient(
+        create_app(
+            artifacts_root=artifacts_root,
+            runtime_coordinator=build_runtime(
+                artifacts_root=artifacts_root,
+                store=store,
+                agent_executor=lambda request, context: AgentResult(
+                    narrative="unused",
+                    findings=[],
+                    sql_trace=[],
+                    tables=[],
+                    charts=[],
+                    artifact_manifest=ArtifactManifest(run_id=context.run_id),
+                ),
+            ),
+            operational_readiness_service=StubReadinessService(artifacts_root),
+            run_metadata_store=store,
+        )
+    )
+
+    response = client.get("/runs")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 def test_get_runs_and_artifacts_read_persisted_history_after_app_recreation(repo_tmp_path: Path) -> None:
     artifacts_root = repo_tmp_path / "artifacts"
     store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)
@@ -271,6 +300,59 @@ def test_get_runs_and_artifacts_read_persisted_history_after_app_recreation(repo
     assert {item["type"] for item in artifacts_response.json()} == {"response", "table"}
 
 
+def test_failed_runs_are_listed_and_detail_preserves_persisted_error(repo_tmp_path: Path) -> None:
+    artifacts_root = repo_tmp_path / "artifacts"
+    store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)
+
+    def failing_agent_executor(request: RunRequest, context: AgentExecutionContext) -> AgentResult:
+        raise RunError(
+            code="llm_provider_unavailable",
+            message="Ollama is unavailable for local generation",
+            stage=ErrorStage.AGENT_EXECUTION,
+            details={"provider": "ollama"},
+        )
+
+    client = TestClient(
+        create_app(
+            artifacts_root=artifacts_root,
+            runtime_coordinator=build_runtime(
+                artifacts_root=artifacts_root,
+                store=store,
+                agent_executor=failing_agent_executor,
+            ),
+            operational_readiness_service=StubReadinessService(artifacts_root),
+            run_metadata_store=store,
+        )
+    )
+
+    response = client.post(
+        "/runs",
+        json={
+            "agent_id": "data_analyst",
+            "dataset_path": "DatasetV1/Walmart_Sales.csv",
+            "user_prompt": "Resume ventas",
+        },
+    )
+
+    assert response.status_code == 503
+
+    list_response = client.get("/runs")
+    assert list_response.status_code == 200
+    payload = list_response.json()
+    assert len(payload) == 1
+    assert payload[0]["status"] == "failed"
+
+    run_id = payload[0]["run_id"]
+    detail_response = client.get(f"/runs/{run_id}")
+
+    assert detail_response.status_code == 200
+    detail_payload = detail_response.json()
+    assert detail_payload["status"] == "failed"
+    assert detail_payload["error"]["code"] == "llm_provider_unavailable"
+    assert detail_payload["error"]["stage"] == "agent_execution"
+    assert detail_payload["result"] is None
+
+
 def test_get_unknown_run_returns_404_api_error(repo_tmp_path: Path) -> None:
     artifacts_root = repo_tmp_path / "artifacts"
     store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)
@@ -300,6 +382,55 @@ def test_get_unknown_run_returns_404_api_error(repo_tmp_path: Path) -> None:
     payload = response.json()
     assert payload["code"] == "run_not_found"
     assert payload["details"]["run_id"] == "run-missing"
+
+
+def test_missing_artifact_files_keep_persisted_references_without_crashing(repo_tmp_path: Path) -> None:
+    artifacts_root = repo_tmp_path / "artifacts"
+    store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)
+
+    def fake_agent_executor(request: RunRequest, context: AgentExecutionContext) -> AgentResult:
+        return AgentResult(
+            narrative="Narrativa persistida",
+            findings=["Hallazgo persistido"],
+            sql_trace=[],
+            tables=[TableResult(name="preview", rows=[{"sales": 10.5}])],
+            charts=[],
+            artifact_manifest=ArtifactManifest(run_id=context.run_id),
+        )
+
+    client = TestClient(
+        create_app(
+            artifacts_root=artifacts_root,
+            runtime_coordinator=build_runtime(
+                artifacts_root=artifacts_root,
+                store=store,
+                agent_executor=fake_agent_executor,
+            ),
+            operational_readiness_service=StubReadinessService(artifacts_root),
+            run_metadata_store=store,
+        )
+    )
+
+    post_response = client.post(
+        "/runs",
+        json={
+            "agent_id": "data_analyst",
+            "dataset_path": "DatasetV1/Walmart_Sales.csv",
+            "user_prompt": "Resume ventas",
+        },
+    )
+    run_id = post_response.json()["run_id"]
+
+    first_artifacts_response = client.get(f"/runs/{run_id}/artifacts")
+    for item in first_artifacts_response.json():
+        Path(item["path"]).unlink()
+
+    second_artifacts_response = client.get(f"/runs/{run_id}/artifacts")
+
+    assert second_artifacts_response.status_code == 200
+    payload = second_artifacts_response.json()
+    assert {item["type"] for item in payload} == {"response", "table"}
+    assert all(item["size_bytes"] is None for item in payload)
 
 
 def test_provider_unavailable_error_maps_to_503(repo_tmp_path: Path) -> None:
@@ -340,3 +471,36 @@ def test_provider_unavailable_error_maps_to_503(repo_tmp_path: Path) -> None:
     payload = response.json()
     assert payload["code"] == "llm_provider_unavailable"
     assert payload["details"]["stage"] == "agent_execution"
+
+
+def test_orphan_run_directories_without_metadata_are_ignored(repo_tmp_path: Path) -> None:
+    artifacts_root = repo_tmp_path / "artifacts"
+    store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)
+    orphan_dir = artifacts_root / "run-orphan"
+    (orphan_dir / "tables").mkdir(parents=True, exist_ok=True)
+    (orphan_dir / "response.md").write_text("orphan artifact\n", encoding="utf-8")
+
+    client = TestClient(
+        create_app(
+            artifacts_root=artifacts_root,
+            runtime_coordinator=build_runtime(
+                artifacts_root=artifacts_root,
+                store=store,
+                agent_executor=lambda request, context: AgentResult(
+                    narrative="unused",
+                    findings=[],
+                    sql_trace=[],
+                    tables=[],
+                    charts=[],
+                    artifact_manifest=ArtifactManifest(run_id=context.run_id),
+                ),
+            ),
+            operational_readiness_service=StubReadinessService(artifacts_root),
+            run_metadata_store=store,
+        )
+    )
+
+    response = client.get("/runs")
+
+    assert response.status_code == 200
+    assert response.json() == []

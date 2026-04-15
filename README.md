@@ -30,7 +30,7 @@ El núcleo funcional sigue congelado por ahora:
 - sin Planner, sin routing automático y sin multi-agent real.
 
 ## Estructura del repo hoy
-- `interfaces/web` — UI local principal para readiness, runs y revisión del último resultado.
+- `interfaces/web` — UI local principal para readiness, lanzamiento de runs e historial persistido con detalle y artifacts.
 - `interfaces/api` — API local mínima para runs, health e historial persistido.
 - `interfaces/cli` — interfaz operativa actual.
 - `application` — casos de uso.
@@ -98,8 +98,10 @@ curl http://127.0.0.1:8000/runs
 ### Verificar la UI web
 - abrir `http://127.0.0.1:4173`;
 - revisar readiness de aplicación/proveedor;
+- comprobar que el historial persistido carga y que el run más reciente queda seleccionado;
 - lanzar un run con `DatasetV1/Walmart_Sales.csv`;
-- comprobar narrativa, hallazgos, tablas y artifacts del último run.
+- comprobar narrativa, hallazgos, tablas y artifacts del run seleccionado;
+- seleccionar un run previo del historial y verificar su detalle persistido.
 
 ## Documentación clave
 - `docs/TASKS.md` — guía principal futura y roadmap operativo canónico.
