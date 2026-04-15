@@ -61,6 +61,9 @@ Comprobar que la API local reutiliza el core correctamente y expone contratos co
 - integration tests de API + core;
 - tests de errores operativos del proveedor local.
 
+### Comando de referencia actual
+- `pytest tests/integration/test_api_endpoints.py -q`
+
 ---
 
 ## 3. Validación de UI web
@@ -104,6 +107,9 @@ Asegurar que el sistema puede listar y recuperar runs más allá del proceso act
 - historial vacío sin error;
 - run persistido con estado fallido;
 - consulta de `run_id` inexistente.
+
+### Comando de referencia actual
+- `pytest tests/integration/test_api_endpoints.py -q`
 
 ---
 
@@ -166,6 +172,8 @@ Comprobar que la experiencia de arranque del producto es comprensible y verifica
 - `python -m interfaces.cli status --json`
 - `python -m interfaces.cli config`
 - `python -m interfaces.cli config --json`
+- `curl http://127.0.0.1:8000/health`
+- `curl http://127.0.0.1:8000/health/proveedor`
 
 ### Casos críticos específicos
 - `status` devuelve exit code no-cero cuando el sistema no está listo;
@@ -250,3 +258,5 @@ Mientras no exista otro runner formal:
 - smoke CLI real: `pytest tests/smoke/test_real_cli_workflow.py -q -rs`
 
 Cuando aparezcan API y UI, deberán añadirse sus comandos de referencia a este documento antes de dar esa fase por cerrada.
+La API local ya queda cubierta por:
+- `pytest tests/integration/test_api_endpoints.py -q`

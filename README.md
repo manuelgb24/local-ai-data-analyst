@@ -30,6 +30,7 @@ El núcleo funcional sigue congelado por ahora:
 - sin Planner, sin routing automático y sin multi-agent real.
 
 ## Estructura del repo hoy
+- `interfaces/api` — API local mínima para runs, health e historial persistido.
 - `interfaces/cli` — interfaz operativa actual.
 - `application` — casos de uso.
 - `runtime` — coordinación del run.
@@ -66,6 +67,18 @@ python -m interfaces.cli --agent data_analyst --dataset DatasetV1/Walmart_Sales.
 ```bash
 python -m interfaces.cli status
 python -m interfaces.cli config
+```
+
+### Levantar la API local
+```bash
+python -m interfaces.api
+```
+
+### Verificar la API local
+```bash
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/health/proveedor
+curl http://127.0.0.1:8000/runs
 ```
 
 ## Documentación clave

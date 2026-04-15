@@ -4,7 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from application.contracts import AgentResult, RunError, RunRequest, RunState
+from application.contracts import AgentResult, DatasetProfile, RunError, RunRequest, RunState
+
+
+def _require_non_empty_string(value: str, field_name: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError(f"{field_name} must be a string")
+
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError(f"{field_name} must be a non-empty string")
+
+    return normalized
 
 
 @dataclass(slots=True)
@@ -16,23 +27,25 @@ class RunRecord:
     request: RunRequest
     state: RunState
     state_history: list[RunState] = field(default_factory=list)
+    created_at: str = ""
+    updated_at: str = ""
+    dataset_profile: DatasetProfile | None = None
     result: AgentResult | None = None
     error: RunError | None = None
 
     def __post_init__(self) -> None:
-        if not self.run_id.strip():
-            raise ValueError("run_id must be a non-empty string")
-        if not self.session_id.strip():
-            raise ValueError("session_id must be a non-empty string")
+        self.run_id = _require_non_empty_string(self.run_id, "run_id")
+        self.session_id = _require_non_empty_string(self.session_id, "session_id")
         if not isinstance(self.request, RunRequest):
             raise TypeError("request must be a RunRequest instance")
-        if not isinstance(self.state, RunState):
-            raise TypeError("state must be a RunState instance")
+        self.state = RunState(self.state)
+        self.created_at = _require_non_empty_string(self.created_at, "created_at")
+        self.updated_at = _require_non_empty_string(self.updated_at, "updated_at")
 
         self.state_history = list(self.state_history) if self.state_history else [self.state]
-
-        if not all(isinstance(item, RunState) for item in self.state_history):
-            raise TypeError("state_history must contain RunState values")
+        self.state_history = [RunState(item) for item in self.state_history]
+        if self.dataset_profile is not None and not isinstance(self.dataset_profile, DatasetProfile):
+            raise TypeError("dataset_profile must be a DatasetProfile instance")
         if self.result is not None and not isinstance(self.result, AgentResult):
             raise TypeError("result must be an AgentResult instance")
         if self.error is not None and not isinstance(self.error, RunError):

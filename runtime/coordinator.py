@@ -64,7 +64,7 @@ class RuntimeCoordinator:
                 output_dir=str(output_dir),
             )
 
-            self._tracker.mark_running_agent(record.run_id)
+            self._tracker.mark_running_agent(record.run_id, dataset_profile=prepared_dataset.dataset_profile)
             current_stage = ErrorStage.AGENT_EXECUTION
 
             result = registered_agent.executor(request, context)
@@ -99,7 +99,7 @@ class RuntimeCoordinator:
     def _reserve_output_dir(self, run_id: str) -> Path:
         self._artifacts_root.mkdir(parents=True, exist_ok=True)
         output_dir = self._artifacts_root / run_id
-        output_dir.mkdir(parents=True, exist_ok=False)
+        output_dir.mkdir(parents=True, exist_ok=True)
         return output_dir
 
     def _persist_artifacts(self, result: AgentResult, output_dir: Path) -> object:

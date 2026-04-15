@@ -4,7 +4,11 @@
 Dar una guía operativa mínima para arrancar y diagnosticar el sistema en su estado actual, manteniendo coherencia con su dirección local-first.
 
 ## Estado operativo actual
-Hoy la superficie operativa real es la CLI. La siguiente fase añadirá UI web y API local, pero esta guía ya fija los chequeos que deberán seguir siendo válidos.
+Hoy el producto ya dispone de:
+- CLI operativa (`status`, `config`, `run`);
+- API local mínima para runs, health e historial persistido.
+
+La UI web sigue siendo una fase posterior.
 
 ## Requisitos mínimos
 - Python con dependencias del repo.
@@ -59,6 +63,60 @@ Debe exponer solo:
 - endpoint del proveedor local;
 - modelo requerido.
 
+## Arranque mínimo actual de la API local
+
+### 1. Levantar la API
+```bash
+python -m interfaces.api
+```
+
+Por defecto expone HTTP en `127.0.0.1:8000`.
+
+### 2. Verificar health de aplicación
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+Debe devolver:
+- `status`;
+- `ready`;
+- `default_agent_id`;
+- `artifacts_root`;
+- `checks`.
+
+### 3. Verificar health del proveedor
+```bash
+curl http://127.0.0.1:8000/health/proveedor
+```
+
+Debe devolver:
+- `status`;
+- `ready`;
+- `proveedor`;
+- `endpoint`;
+- `binary_available`;
+- `reachable`;
+- `model`;
+- `model_available`.
+
+### 4. Crear un run por API
+```bash
+curl -X POST http://127.0.0.1:8000/runs ^
+  -H "Content-Type: application/json" ^
+  -d "{\"agent_id\":\"data_analyst\",\"dataset_path\":\"DatasetV1/Walmart_Sales.csv\",\"user_prompt\":\"Resume los hallazgos principales\"}"
+```
+
+El `POST /runs` es síncrono en esta fase y devuelve el `RunDetail` final cuando el run termina.
+
+### 5. Consultar historial persistido
+```bash
+curl http://127.0.0.1:8000/runs
+curl http://127.0.0.1:8000/runs/{run_id}
+curl http://127.0.0.1:8000/runs/{run_id}/artifacts
+```
+
+La metadata persistida del run se guarda en `artifacts/runs/<run_id>/run.json`, junto a los artifacts del propio run.
+
 ## Health y readiness esperados
 Aunque la superficie HTTP todavía no esté implementada, el producto debe distinguir entre:
 
@@ -80,8 +138,13 @@ La futura API local deberá exponer ambos chequeos de forma explícita.
 ## Entrada futura documentada del dataset
 La etapa futura aprobada sigue usando **ruta manual local** como entrada del dataset. Eso mantiene coherencia con el flujo actual del repositorio y con el contrato `dataset_path`.
 
-## Historial persistente local previsto
-La operación futura del producto deberá poder consultar historial persistente local de runs, no solo el run actual del proceso en memoria. Esa capacidad debe mantenerse alineada con la persistencia local de metadata y con el espacio de artifacts.
+## Historial persistente local actual
+La operación local ya puede consultar historial persistente de runs por API:
+- `GET /runs`;
+- `GET /runs/{run_id}`;
+- `GET /runs/{run_id}/artifacts`.
+
+La fuente de verdad para ese historial es la metadata file-backed que vive junto a cada run en el espacio de artifacts.
 
 ## Troubleshooting básico
 
@@ -124,9 +187,8 @@ Lectura:
 - el fallo ocurrió antes de persistencia de artifacts o durante ella.
 
 ## Qué deberá cubrir esta guía más adelante
-Cuando existan API local y UI web, esta guía deberá ampliarse con:
-- cómo arrancar la aplicación local completa;
-- cómo verificar `/health` y `/health/proveedor`;
+Cuando exista UI web y crezca la observabilidad, esta guía deberá ampliarse con:
+- cómo arrancar la aplicación local completa (API + UI);
 - cómo leer logs estructurados;
-- cómo consultar historial persistente local de runs;
-- cómo ejecutar smoke UI + API + proveedor.
+- cómo ejecutar smoke UI + API + proveedor;
+- cómo diagnosticar correlación por `session_id` y `run_id`.
