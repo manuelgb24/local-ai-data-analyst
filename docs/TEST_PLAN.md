@@ -87,6 +87,11 @@ Demostrar que la experiencia principal del producto funciona de forma completa.
 ### Herramienta prevista
 - Playwright para browser E2E.
 
+### Comandos de referencia actuales
+- `npm --prefix interfaces/web run build`
+- `npm --prefix interfaces/web run test:e2e`
+- smoke manual real: API local + UI local con `DatasetV1/Walmart_Sales.csv`
+
 ---
 
 ## 4. Validación de historial persistente local
@@ -260,3 +265,6 @@ Mientras no exista otro runner formal:
 Cuando aparezcan API y UI, deberán añadirse sus comandos de referencia a este documento antes de dar esa fase por cerrada.
 La API local ya queda cubierta por:
 - `pytest tests/integration/test_api_endpoints.py -q`
+La UI web ya queda cubierta por:
+- `npm --prefix interfaces/web run build`
+- `npm --prefix interfaces/web run test:e2e`

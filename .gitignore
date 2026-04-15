@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.tmp_pytest/
+
+interfaces/web/node_modules/
+interfaces/web/dist/
+interfaces/web/playwright-report/
+interfaces/web/test-results/
+interfaces/web/.vite/

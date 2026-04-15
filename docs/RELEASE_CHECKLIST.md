@@ -32,9 +32,11 @@ Aplicar cuando exista cada superficie:
 - [ ] Health del proveedor verificado en `GET /health/proveedor`.
 
 ### UI web
+- [ ] `npm --prefix interfaces/web run build`
+- [ ] `npm --prefix interfaces/web run test:e2e`
 - [ ] Browser E2E del flujo principal con ruta manual de dataset.
 - [ ] Revisión manual de errores operativos visibles.
-- [ ] Acceso correcto a resultados, historial y artifacts.
+- [ ] Acceso correcto a resultados y artifacts del último run.
 
 ## 5. Operación y soporte
 - [ ] Los errores importantes son trazables.

@@ -7,11 +7,11 @@ Dar una guía operativa mínima para arrancar y diagnosticar el sistema en su es
 Hoy el producto ya dispone de:
 - CLI operativa (`status`, `config`, `run`);
 - API local mínima para runs, health e historial persistido.
-
-La UI web sigue siendo una fase posterior.
+- UI web local principal para readiness, ejecución del run actual y revisión de artifacts.
 
 ## Requisitos mínimos
 - Python con dependencias del repo.
+- Node.js + npm para la UI local.
 - Ollama instalado.
 - Ollama levantado localmente.
 - Modelo `deepseek-r1:8b` disponible.
@@ -34,6 +34,11 @@ Debe aparecer `deepseek-r1:8b` en la lista de modelos de Ollama.
 ### 4. Ejecutar una prueba manual mínima
 ```bash
 python -m interfaces.cli --agent data_analyst --dataset DatasetV1/Walmart_Sales.csv --prompt "Resume los hallazgos principales"
+```
+
+### 5. Instalar dependencias de la UI web
+```bash
+npm --prefix interfaces/web install
 ```
 
 ## Chequeos operativos actuales por CLI
@@ -117,6 +122,25 @@ curl http://127.0.0.1:8000/runs/{run_id}/artifacts
 
 La metadata persistida del run se guarda en `artifacts/runs/<run_id>/run.json`, junto a los artifacts del propio run.
 
+## Arranque mínimo actual de la UI web local
+
+### 1. Confirmar que la API local está levantada
+La UI usa `/api` con proxy local hacia `http://127.0.0.1:8000`, así que la API debe estar arrancada antes.
+
+### 2. Levantar la UI
+```bash
+npm --prefix interfaces/web run dev
+```
+
+Por defecto la UI queda disponible en `http://127.0.0.1:4173`.
+
+### 3. Recorrido mínimo esperado
+- abrir `http://127.0.0.1:4173`;
+- comprobar el readiness de aplicación y proveedor;
+- introducir `DatasetV1/Walmart_Sales.csv` como ruta manual;
+- lanzar el run con un prompt simple;
+- revisar narrativa, hallazgos, tablas y artifacts del último run.
+
 ## Health y readiness esperados
 Aunque la superficie HTTP todavía no esté implementada, el producto debe distinguir entre:
 
@@ -187,8 +211,7 @@ Lectura:
 - el fallo ocurrió antes de persistencia de artifacts o durante ella.
 
 ## Qué deberá cubrir esta guía más adelante
-Cuando exista UI web y crezca la observabilidad, esta guía deberá ampliarse con:
-- cómo arrancar la aplicación local completa (API + UI);
+Cuando crezca la observabilidad, esta guía deberá ampliarse con:
 - cómo leer logs estructurados;
 - cómo ejecutar smoke UI + API + proveedor;
 - cómo diagnosticar correlación por `session_id` y `run_id`.

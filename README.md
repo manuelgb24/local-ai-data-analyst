@@ -30,6 +30,7 @@ El núcleo funcional sigue congelado por ahora:
 - sin Planner, sin routing automático y sin multi-agent real.
 
 ## Estructura del repo hoy
+- `interfaces/web` — UI local principal para readiness, runs y revisión del último resultado.
 - `interfaces/api` — API local mínima para runs, health e historial persistido.
 - `interfaces/cli` — interfaz operativa actual.
 - `application` — casos de uso.
@@ -41,9 +42,10 @@ El núcleo funcional sigue congelado por ahora:
 - `tests` — unit, integration, e2e y smoke.
 - `docs` — arquitectura, contratos, decisiones, alcance, operación y checklist de release.
 
-## Cómo arrancar el MVP actual
+## Cómo arrancar el producto local actual
 ### Requisitos
 - Python con dependencias de `requirements.txt`
+- Node.js + npm para la UI web local
 - Ollama levantado localmente
 - modelo `deepseek-r1:8b` disponible en Ollama
 
@@ -74,12 +76,30 @@ python -m interfaces.cli config
 python -m interfaces.api
 ```
 
+### Instalar dependencias de la UI web
+```bash
+npm --prefix interfaces/web install
+```
+
+### Levantar la UI web local
+```bash
+npm --prefix interfaces/web run dev
+```
+
+Por defecto la UI queda disponible en `http://127.0.0.1:4173` y usa `/api` con proxy local hacia `http://127.0.0.1:8000`.
+
 ### Verificar la API local
 ```bash
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/health/proveedor
 curl http://127.0.0.1:8000/runs
 ```
+
+### Verificar la UI web
+- abrir `http://127.0.0.1:4173`;
+- revisar readiness de aplicación/proveedor;
+- lanzar un run con `DatasetV1/Walmart_Sales.csv`;
+- comprobar narrativa, hallazgos, tablas y artifacts del último run.
 
 ## Documentación clave
 - `docs/TASKS.md` — guía principal futura y roadmap operativo canónico.
