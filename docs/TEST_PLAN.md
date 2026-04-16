@@ -203,12 +203,19 @@ Comprobar que la experiencia de arranque del producto es comprensible y verifica
 ### Objetivo
 Preparar la etapa en la que el producto se distribuya de forma más formal.
 
-### Debe cubrir cuando se implemente
+### Debe cubrir
 - instalación reproducible;
 - arranque reproducible;
-- checks previos a release;
-- smoke manual documentado;
+- serving de la UI build desde la API local;
+- fallo claro cuando falta `interfaces/web/dist`;
+- smoke manual documentado del arranque monoproceso;
 - verificación de que la documentación de operación coincide con el empaquetado real.
+
+### Comandos de referencia actuales
+- `pytest tests/unit/test_api_app.py -q`
+- `pytest tests/integration/test_api_endpoints.py -q`
+- `npm --prefix interfaces/web run build`
+- validación manual: `python -m interfaces.api --serve-web`
 
 ---
 
@@ -283,3 +290,7 @@ La UI web ya queda cubierta por:
 La observabilidad mínima correlada queda cubierta además por:
 - `pytest tests/unit/test_observability_logging.py -q`
 - `pytest tests/integration/test_runtime_flow.py -q`
+El packaging local monoproceso queda cubierto además por:
+- `pytest tests/unit/test_api_app.py -q`
+- `pytest tests/integration/test_api_endpoints.py -q`
+- `python -m interfaces.api --serve-web`

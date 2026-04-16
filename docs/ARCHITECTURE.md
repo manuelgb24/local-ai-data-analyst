@@ -28,6 +28,7 @@ La UI y la API se apoyan en el mismo core existente. No deben reimplementar:
 - Publica endpoints mínimos de ejecución, listado de runs, consulta de runs, artifacts y health.
 - Traduce peticiones externas al caso de uso del sistema.
 - Recibe la ruta manual local al dataset y construye el `RunRequest` interno.
+- En Fase 6 puede servir además la UI build en modo monoproceso para reducir fricción de arranque local.
 - No duplica lógica de runtime o agente.
 
 ### 3. `interfaces/cli`
@@ -90,6 +91,12 @@ La UI y la API se apoyan en el mismo core existente. No deben reimplementar:
 9. La persistencia local de metadata permite listar y consultar runs posteriores.
 10. La API devuelve estado, resumen y referencias.
 11. La UI renderiza narrativa, artifacts y estado operativo.
+
+### Flujo repo-local empaquetado
+1. Se construye `interfaces/web/dist`.
+2. `python -m interfaces.api --serve-web` levanta un único proceso local.
+3. Ese proceso sirve la UI build en `/` y mantiene la API local en el mismo origen.
+4. La UI empaquetada consume `/health`, `/health/proveedor` y `/runs*` sin proxy de desarrollo.
 
 ### Flujo operativo por CLI
 1. La CLI puede exponer `status`, `config` y `run`.

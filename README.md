@@ -81,7 +81,19 @@ python -m interfaces.api
 npm --prefix interfaces/web install
 ```
 
-### Levantar la UI web local
+### Build de la UI web empaquetada
+```bash
+npm --prefix interfaces/web run build
+```
+
+### Arranque recomendado del producto en un solo proceso
+```bash
+python -m interfaces.api --serve-web
+```
+
+Por defecto la UI empaquetada queda disponible en `http://127.0.0.1:8000` y consume la API local por mismo origen.
+
+### Flujo de desarrollo alternativo: UI web local
 ```bash
 npm --prefix interfaces/web run dev
 ```
@@ -96,7 +108,7 @@ curl http://127.0.0.1:8000/runs
 ```
 
 ### Verificar la UI web
-- abrir `http://127.0.0.1:4173`;
+- abrir `http://127.0.0.1:8000` si se usa `--serve-web`, o `http://127.0.0.1:4173` en modo desarrollo;
 - revisar readiness de aplicación/proveedor;
 - comprobar que el historial persistido carga y que el run más reciente queda seleccionado;
 - lanzar un run con `DatasetV1/Walmart_Sales.csv`;
@@ -110,6 +122,7 @@ curl http://127.0.0.1:8000/runs
 - `docs/ARCHITECTURE.md` — arquitectura actual y evolución prevista.
 - `docs/CONTRACTS.md` — contratos del core y de la futura API local.
 - `docs/DECISIONS.md` — decisiones de producto y arquitectura.
+- `docs/INSTALLATION.md` — instalación, build y arranque recomendado del producto.
 - `docs/TEST_PLAN.md` — estrategia de validación.
 - `docs/OPERATIONS.md` — operación local y troubleshooting.
 - `docs/RELEASE_CHECKLIST.md` — checklist de release.

@@ -11,6 +11,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from application import (
     ErrorStage,
@@ -45,6 +46,7 @@ from .serializers import build_api_error, serialize_response
 DEFAULT_API_HOST = "127.0.0.1"
 DEFAULT_API_PORT = 8000
 DEFAULT_ARTIFACTS_ROOT = "artifacts/runs"
+DEFAULT_WEB_DIST = Path(__file__).resolve().parents[1] / "web" / "dist"
 _PROVIDER_UNAVAILABLE_CODES = frozenset({"llm_provider_unavailable"})
 _LOGGER = get_logger("api")
 
@@ -75,6 +77,8 @@ def create_app(
     runtime_coordinator: RuntimeCoordinator | None = None,
     operational_readiness_service: OperationalReadinessService | None = None,
     run_metadata_store: FilesystemRunMetadataStore | None = None,
+    serve_web: bool = False,
+    web_dist: str | Path | None = None,
 ) -> FastAPI:
     configure_structured_logging()
     store = run_metadata_store or build_default_run_metadata_store(artifacts_root=artifacts_root)
@@ -259,13 +263,20 @@ def create_app(
     def get_provider_health() -> JSONResponse:
         return JSONResponse(status_code=200, content=serialize_response(readiness_service.get_provider_health()))
 
+    if serve_web:
+        app.mount(
+            "/",
+            StaticFiles(directory=str(validate_web_dist(web_dist)), html=True),
+            name="web",
+        )
+
     return app
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m interfaces.api",
-        description="Run the local-first Phase 2 API server.",
+        description="Run the local-first API server, optionally serving the packaged web UI.",
     )
     parser.add_argument("--host", default=DEFAULT_API_HOST, help="Host interface to bind.")
     parser.add_argument("--port", type=int, default=DEFAULT_API_PORT, help="TCP port for the local API.")
@@ -274,10 +285,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=DEFAULT_ARTIFACTS_ROOT,
         help="Filesystem root used for run artifacts and persisted metadata.",
     )
+    parser.add_argument(
+        "--serve-web",
+        action="store_true",
+        help="Serve the built web UI from the same local API process.",
+    )
+    parser.add_argument(
+        "--web-dist",
+        default=None,
+        help="Optional filesystem path to the built web UI directory. Defaults to interfaces/web/dist.",
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
+    try:
+        app = create_app(
+            artifacts_root=args.artifacts_root,
+            serve_web=args.serve_web,
+            web_dist=args.web_dist,
+        )
+    except ValueError as exc:
+        parser.exit(status=2, message=f"error: {exc}\n")
+
     uvicorn.run(
-        create_app(artifacts_root=args.artifacts_root),
+        app,
         host=args.host,
         port=args.port,
         access_log=False,
@@ -312,6 +342,22 @@ def _status_code_for_run_error(error: RunError) -> int:
     if error.stage is ErrorStage.AGENT_EXECUTION:
         return 500
     return 500
+
+
+def resolve_web_dist(web_dist: str | Path | None = None) -> Path:
+    candidate = DEFAULT_WEB_DIST if web_dist is None else Path(web_dist).expanduser()
+    return candidate.resolve()
+
+
+def validate_web_dist(web_dist: str | Path | None = None) -> Path:
+    resolved = resolve_web_dist(web_dist)
+    index_path = resolved / "index.html"
+    if not resolved.is_dir() or not index_path.is_file():
+        raise ValueError(
+            "UI build not found at "
+            f"'{resolved}'. Run 'npm --prefix interfaces/web run build' before using --serve-web."
+        )
+    return resolved
 
 
 def _trace_id(request: Request | None = None) -> str:

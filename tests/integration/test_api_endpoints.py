@@ -3,6 +3,7 @@ from io import StringIO
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+import pytest
 
 from application import (
     AgentExecutionContext,
@@ -98,6 +99,17 @@ def configure_log_capture() -> StringIO:
 
 def parse_log_lines(stream: StringIO) -> list[dict[str, object]]:
     return [json.loads(line) for line in stream.getvalue().splitlines() if line.strip()]
+
+
+def build_web_dist(root: Path) -> Path:
+    web_dist = root / "web-dist"
+    (web_dist / "assets").mkdir(parents=True, exist_ok=True)
+    (web_dist / "index.html").write_text(
+        "<!doctype html><html><body><div id='root'>packaged-ui</div></body></html>",
+        encoding="utf-8",
+    )
+    (web_dist / "assets" / "app.js").write_text("console.log('packaged-ui');\n", encoding="utf-8")
+    return web_dist
 
 
 def test_post_runs_executes_core_and_persists_detail(repo_tmp_path: Path) -> None:
@@ -541,3 +553,65 @@ def test_orphan_run_directories_without_metadata_are_ignored(repo_tmp_path: Path
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_packaged_web_root_is_served_without_hiding_api_endpoints(repo_tmp_path: Path) -> None:
+    artifacts_root = repo_tmp_path / "artifacts"
+    store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)
+    web_dist = build_web_dist(repo_tmp_path)
+    client = TestClient(
+        create_app(
+            artifacts_root=artifacts_root,
+            runtime_coordinator=build_runtime(
+                artifacts_root=artifacts_root,
+                store=store,
+                agent_executor=lambda request, context: AgentResult(
+                    narrative="unused",
+                    findings=[],
+                    sql_trace=[],
+                    tables=[],
+                    charts=[],
+                    artifact_manifest=ArtifactManifest(run_id=context.run_id),
+                ),
+            ),
+            operational_readiness_service=StubReadinessService(artifacts_root),
+            run_metadata_store=store,
+            serve_web=True,
+            web_dist=web_dist,
+        )
+    )
+
+    root_response = client.get("/")
+    asset_response = client.get("/assets/app.js")
+    health_response = client.get("/health")
+
+    assert root_response.status_code == 200
+    assert "text/html" in root_response.headers["content-type"]
+    assert "packaged-ui" in root_response.text
+    assert asset_response.status_code == 200
+    assert "packaged-ui" in asset_response.text
+    assert health_response.status_code == 200
+    assert health_response.json()["status"] == "ok"
+
+
+def test_packaged_web_requires_existing_build(repo_tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="Run 'npm --prefix interfaces/web run build' before using --serve-web"):
+        create_app(
+            artifacts_root=repo_tmp_path / "artifacts",
+            runtime_coordinator=build_runtime(
+                artifacts_root=repo_tmp_path / "artifacts",
+                store=FilesystemRunMetadataStore(artifacts_root=repo_tmp_path / "artifacts"),
+                agent_executor=lambda request, context: AgentResult(
+                    narrative="unused",
+                    findings=[],
+                    sql_trace=[],
+                    tables=[],
+                    charts=[],
+                    artifact_manifest=ArtifactManifest(run_id=context.run_id),
+                ),
+            ),
+            operational_readiness_service=StubReadinessService(repo_tmp_path / "artifacts"),
+            run_metadata_store=FilesystemRunMetadataStore(artifacts_root=repo_tmp_path / "artifacts"),
+            serve_web=True,
+            web_dist=repo_tmp_path / "missing-web-dist",
+        )

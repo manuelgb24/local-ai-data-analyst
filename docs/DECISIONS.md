@@ -167,3 +167,10 @@
 - **Impacto**: API, CLI y runtime comparten el mismo logger estructurado; la API añade `X-Trace-Id` en respuestas y los errores exponen `details.category`.
 - **Descartes**: introducir `structlog`, guardar logs en archivo o adelantar observabilidad de release/distribución.
 - **Estado**: aceptada.
+
+## D-025 — La Fase 6 empaqueta el producto como runtime local monoproceso
+- **Decisión**: la historia recomendada de packaging local queda en un solo proceso: la API local sirve la UI build y el producto arranca con `python -m interfaces.api --serve-web`.
+- **Motivo**: reduce fricción operativa sin reabrir backend hosted, bundling adicional ni cambios en el core.
+- **Impacto**: Node.js queda como dependencia de build de la UI, mientras que el runtime local publicado usa mismo origen para UI y API.
+- **Descartes**: mantener dos procesos como historia principal de distribución, o generar ya zip/binario/instalador fuera del repo.
+- **Estado**: aceptada.

@@ -30,6 +30,7 @@ Aplicar cuando exista cada superficie:
 - [ ] Contract tests de `GET /runs/{run_id}/artifacts`.
 - [ ] Health de aplicación verificado.
 - [ ] Health del proveedor verificado en `GET /health/proveedor`.
+- [ ] `python -m interfaces.api --serve-web` arranca sin errores cuando la build existe.
 
 ### UI web
 - [ ] `npm --prefix interfaces/web run build`
@@ -37,12 +38,14 @@ Aplicar cuando exista cada superficie:
 - [ ] Browser E2E del flujo principal con ruta manual de dataset.
 - [ ] Revisión manual de errores operativos visibles.
 - [ ] Acceso correcto a resultados y artifacts del último run.
+- [ ] La UI empaquetada carga desde `http://127.0.0.1:8000/` y consume la API por mismo origen.
 
 ## 5. Operación y soporte
 - [ ] Los errores importantes son trazables.
 - [ ] La documentación de troubleshooting cubre los fallos más comunes.
 - [ ] Los pasos de arranque local son reproducibles.
 - [ ] El historial persistente local es coherente con los artifacts disponibles.
+- [ ] `docs/INSTALLATION.md` refleja la historia real de build + arranque monoproceso.
 
 ## 6. Decisiones de no-scope confirmadas
 - [ ] No se introdujo Planner.

@@ -41,6 +41,11 @@ python -m interfaces.cli --agent data_analyst --dataset DatasetV1/Walmart_Sales.
 npm --prefix interfaces/web install
 ```
 
+### 6. Construir la UI web empaquetada
+```bash
+npm --prefix interfaces/web run build
+```
+
 ## Chequeos operativos actuales por CLI
 
 ### Estado operativo agregado
@@ -122,6 +127,39 @@ curl http://127.0.0.1:8000/runs/{run_id}/artifacts
 
 La metadata persistida del run se guarda en `artifacts/runs/<run_id>/run.json`, junto a los artifacts del propio run.
 
+## Arranque recomendado del producto empaquetado
+
+### 1. Construir la UI
+```bash
+npm --prefix interfaces/web run build
+```
+
+### 2. Levantar API + UI en un solo proceso
+```bash
+python -m interfaces.api --serve-web
+```
+
+Por defecto:
+- la UI queda servida desde `http://127.0.0.1:8000/`;
+- los assets web salen de `interfaces/web/dist`;
+- la UI usa la API local por mismo origen;
+- los endpoints API siguen disponibles en el mismo proceso.
+
+### 3. Recorrido mínimo esperado en packaging local
+- abrir `http://127.0.0.1:8000/`;
+- comprobar readiness de aplicación y proveedor;
+- revisar que el historial persistido carga;
+- introducir `DatasetV1/Walmart_Sales.csv` como ruta manual;
+- lanzar el run con un prompt simple;
+- revisar narrativa, hallazgos, tablas y artifacts del run seleccionado.
+
+### 4. Fallo esperado si falta la build
+Si `interfaces/web/dist/index.html` no existe, `python -m interfaces.api --serve-web` falla con error claro y pide ejecutar:
+
+```bash
+npm --prefix interfaces/web run build
+```
+
 ## Arranque mínimo actual de la UI web local
 
 ### 1. Confirmar que la API local está levantada
@@ -172,6 +210,14 @@ La operación local ya puede consultar historial persistente de runs por API y p
 
 La fuente de verdad para ese historial es la metadata file-backed que vive junto a cada run en el espacio de artifacts.
 La UI consume esos mismos contratos para listar runs previos, seleccionar un run y revisar su detalle/artifacts sin depender solo del proceso actual.
+
+## Packaging local actual
+La forma recomendada de distribución local en esta fase es repo-local y monoproceso:
+- instalar dependencias Python y web;
+- construir `interfaces/web/dist`;
+- arrancar `python -m interfaces.api --serve-web`.
+
+No se introducen todavía zip, binario, instalador ni bundle autónomo fuera del repo.
 
 ## Troubleshooting básico
 
