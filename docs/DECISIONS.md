@@ -160,3 +160,10 @@
 - **Impacto**: contratos, arquitectura, operación, tasks y checklist deben usar esa misma convención.
 - **Descartes**: alternar `provider/proveedor` o `DeepSeek-R1:8b/deepseek-r1:8b`.
 - **Estado**: aceptada.
+
+## D-024 — La Fase 5 usa logs JSON correlados solo a consola
+- **Decisión**: la observabilidad mínima del producto se implementa con logs estructurados JSON emitidos a stdout/stderr, correlados por `trace_id`, `session_id` y `run_id`.
+- **Motivo**: mejora soporte y diagnóstico local sin abrir persistencia adicional, rotación de logs ni trabajo de packaging fuera de alcance.
+- **Impacto**: API, CLI y runtime comparten el mismo logger estructurado; la API añade `X-Trace-Id` en respuestas y los errores exponen `details.category`.
+- **Descartes**: introducir `structlog`, guardar logs en archivo o adelantar observabilidad de release/distribución.
+- **Estado**: aceptada.

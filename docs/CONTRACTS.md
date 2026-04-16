@@ -368,6 +368,10 @@ Dar formato estable a errores de la API local.
 #### Regla
 Debe poder mapear errores del core sin perder legibilidad para UI y soporte.
 
+#### Regla adicional de Fase 5
+- `details.category` debe clasificar el error como `request`, `dataset`, `provider` o `core`.
+- Cuando exista contexto adicional, debe vivir dentro de `details.context`.
+
 ---
 
 ## 12. Persistencia local mínima prevista
@@ -386,27 +390,34 @@ La siguiente etapa de producto asume una persistencia local mínima de metadata 
 - Crea un run nuevo.
 - Entrada: `CreateRunRequest`.
 - Salida mínima: `RunDetail` inicial o `RunSummary` con `run_id`.
+- Devuelve además header `X-Trace-Id` para correlación operativa.
 
 ### `GET /runs`
 - Devuelve el listado de runs persistidos localmente.
 - Salida: lista de `RunSummary`.
+- Devuelve además header `X-Trace-Id`.
 
 ### `GET /runs/{run_id}`
 - Devuelve el estado y detalle del run.
 - Salida: `RunDetail`.
+- Si el run falló, `error.details.category` debe venir persistido.
+- Devuelve además header `X-Trace-Id`.
 
 ### `GET /runs/{run_id}/artifacts`
 - Devuelve la lista de artifacts persistidos del run.
 - Salida: lista de `ArtifactListItem`.
+- Devuelve además header `X-Trace-Id`.
 
 ### `GET /health`
 - Confirma que la aplicación/API local está levantada.
 - Salida mínima: `ApplicationHealth`.
 - Debe heredar la semántica operativa ya expuesta por la CLI en Fase 1.
+- Devuelve además header `X-Trace-Id`.
 
 ### `GET /health/proveedor`
 - Expone `ProveedorHealth`.
 - Sirve para readiness del proveedor local y del modelo requerido.
+- Devuelve además header `X-Trace-Id`.
 
 ---
 

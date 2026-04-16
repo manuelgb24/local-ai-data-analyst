@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from time import perf_counter
 
 from application.contracts import AgentExecutionContext, AgentResult, ErrorStage, RunError, RunRequest, RunState
 from artifacts import FilesystemArtifactPersister
 from data import PreparedDataset
+from observability import bound_context, ensure_error_category, get_logger, log_event
 
 from .registry import AgentRegistry
 from .tracker import InMemoryRunTracker
@@ -32,6 +34,7 @@ class RuntimeCoordinator:
         self._tracker = tracker or InMemoryRunTracker()
         self._artifact_persister = artifact_persister or FilesystemArtifactPersister()
         self._artifacts_root = Path(artifacts_root)
+        self._logger = get_logger("runtime")
 
     @property
     def tracker(self) -> InMemoryRunTracker:
@@ -41,60 +44,129 @@ class RuntimeCoordinator:
         if not isinstance(request, RunRequest):
             raise TypeError("request must be a RunRequest instance")
 
+        started_at = perf_counter()
         record = self._tracker.start_run(request)
         current_stage = ErrorStage.AGENT_RESOLUTION
         prepared_dataset: PreparedDataset | None = None
         result: AgentResult | None = None
         pending_error: RunError | None = None
 
-        try:
-            registered_agent = self._agent_registry.resolve(request.agent_id)
-
-            self._tracker.mark_preparing_dataset(record.run_id)
-            current_stage = ErrorStage.DATASET_PREPARATION
-
-            output_dir = self._reserve_output_dir(record.run_id)
-            prepared_dataset = self._dataset_preparer(request, record.run_id)
-
-            context = AgentExecutionContext(
-                run_id=record.run_id,
-                session_id=record.session_id,
-                dataset_profile=prepared_dataset.dataset_profile,
-                duckdb_context=prepared_dataset.duckdb_context,
-                output_dir=str(output_dir),
+        with bound_context(
+            run_id=record.run_id,
+            session_id=record.session_id,
+            agent_id=request.agent_id,
+        ):
+            log_event(
+                self._logger,
+                "run_started",
+                dataset_path=request.dataset_path,
+                provided_session_id=request.session_id,
             )
 
-            self._tracker.mark_running_agent(record.run_id, dataset_profile=prepared_dataset.dataset_profile)
-            current_stage = ErrorStage.AGENT_EXECUTION
+            try:
+                registered_agent = self._agent_registry.resolve(request.agent_id)
 
-            result = registered_agent.executor(request, context)
-            result.artifact_manifest = self._persist_artifacts(result, output_dir)
-        except RunError as error:
-            pending_error = error
-        except Exception as exc:
-            pending_error = self._wrap_unexpected_error(record.run_id, current_stage, exc)
+                self._tracker.mark_preparing_dataset(record.run_id)
+                current_stage = ErrorStage.DATASET_PREPARATION
+                log_event(
+                    self._logger,
+                    "dataset_preparing",
+                    stage=current_stage.value,
+                    dataset_path=request.dataset_path,
+                )
 
-        cleanup_error = self._cleanup_prepared_dataset(prepared_dataset)
-        if pending_error is not None:
-            self._tracker.mark_failed(record.run_id, pending_error)
-            raise pending_error
+                output_dir = self._reserve_output_dir(record.run_id)
+                prepared_dataset = self._dataset_preparer(request, record.run_id)
 
-        if cleanup_error is not None:
-            wrapped_cleanup_error = self._wrap_unexpected_error(record.run_id, current_stage, cleanup_error)
-            self._tracker.mark_failed(record.run_id, wrapped_cleanup_error)
-            raise wrapped_cleanup_error from cleanup_error
+                context = AgentExecutionContext(
+                    run_id=record.run_id,
+                    session_id=record.session_id,
+                    dataset_profile=prepared_dataset.dataset_profile,
+                    duckdb_context=prepared_dataset.duckdb_context,
+                    output_dir=str(output_dir),
+                )
 
-        if result is None:
-            unreachable_error = self._wrap_unexpected_error(
-                record.run_id,
-                current_stage,
-                RuntimeError("Runtime finished without result or error"),
+                self._tracker.mark_running_agent(record.run_id, dataset_profile=prepared_dataset.dataset_profile)
+                current_stage = ErrorStage.AGENT_EXECUTION
+                log_event(
+                    self._logger,
+                    "agent_running",
+                    stage=current_stage.value,
+                    table_name=prepared_dataset.dataset_profile.table_name,
+                    row_count=prepared_dataset.dataset_profile.row_count,
+                )
+
+                result = registered_agent.executor(request, context)
+                result.artifact_manifest = self._persist_artifacts(result, output_dir)
+            except RunError as error:
+                pending_error = ensure_error_category(error)
+            except Exception as exc:
+                pending_error = ensure_error_category(self._wrap_unexpected_error(record.run_id, current_stage, exc))
+
+            cleanup_error = self._cleanup_prepared_dataset(prepared_dataset)
+            if pending_error is not None:
+                self._tracker.mark_failed(record.run_id, pending_error)
+                log_event(
+                    self._logger,
+                    "run_failed",
+                    level=40,
+                    code=pending_error.code,
+                    stage=pending_error.stage.value,
+                    category=(pending_error.details or {}).get("category"),
+                    duration_ms=round((perf_counter() - started_at) * 1000, 2),
+                    error_message=pending_error.message,
+                )
+                raise pending_error
+
+            if cleanup_error is not None:
+                wrapped_cleanup_error = ensure_error_category(
+                    self._wrap_unexpected_error(record.run_id, current_stage, cleanup_error)
+                )
+                self._tracker.mark_failed(record.run_id, wrapped_cleanup_error)
+                log_event(
+                    self._logger,
+                    "run_failed",
+                    level=40,
+                    code=wrapped_cleanup_error.code,
+                    stage=wrapped_cleanup_error.stage.value,
+                    category=(wrapped_cleanup_error.details or {}).get("category"),
+                    duration_ms=round((perf_counter() - started_at) * 1000, 2),
+                    error_message=wrapped_cleanup_error.message,
+                )
+                raise wrapped_cleanup_error from cleanup_error
+
+            if result is None:
+                unreachable_error = ensure_error_category(
+                    self._wrap_unexpected_error(
+                        record.run_id,
+                        current_stage,
+                        RuntimeError("Runtime finished without result or error"),
+                    )
+                )
+                self._tracker.mark_failed(record.run_id, unreachable_error)
+                log_event(
+                    self._logger,
+                    "run_failed",
+                    level=40,
+                    code=unreachable_error.code,
+                    stage=unreachable_error.stage.value,
+                    category=(unreachable_error.details or {}).get("category"),
+                    duration_ms=round((perf_counter() - started_at) * 1000, 2),
+                    error_message=unreachable_error.message,
+                )
+                raise unreachable_error
+
+            self._tracker.mark_succeeded(record.run_id, result)
+            log_event(
+                self._logger,
+                "run_succeeded",
+                duration_ms=round((perf_counter() - started_at) * 1000, 2),
+                finding_count=len(result.findings),
+                table_count=len(result.tables),
+                chart_count=len(result.charts),
+                response_path=result.artifact_manifest.response_path,
             )
-            self._tracker.mark_failed(record.run_id, unreachable_error)
-            raise unreachable_error
-
-        self._tracker.mark_succeeded(record.run_id, result)
-        return result
+            return result
 
     def _reserve_output_dir(self, run_id: str) -> Path:
         self._artifacts_root.mkdir(parents=True, exist_ok=True)

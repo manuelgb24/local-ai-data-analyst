@@ -146,8 +146,8 @@ function createFailedRun({
       stage,
       details:
         stage === "dataset_preparation"
-          ? { dataset_path: datasetPath }
-          : { provider: "ollama" },
+          ? { dataset_path: datasetPath, category: "dataset" }
+          : { provider: "ollama", category: "provider" },
     },
     artifact_manifest: null,
   };
@@ -289,6 +289,7 @@ const server = http.createServer(async (request, response) => {
         message: "Missing required fields",
         status: 400,
         details: {
+          category: "request",
           stage: "request_validation",
         },
         trace_id: "mock-trace-validation",
@@ -302,6 +303,7 @@ const server = http.createServer(async (request, response) => {
         message: "dataset_path must use a supported format: csv, xlsx, parquet",
         status: 400,
         details: {
+          category: "request",
           stage: "request_validation",
         },
         trace_id: "mock-trace-request-validation",
@@ -328,6 +330,7 @@ const server = http.createServer(async (request, response) => {
         message: "Ollama is unavailable for local generation",
         status: 503,
         details: {
+          category: "provider",
           stage: "agent_execution",
           context: {
             provider: "ollama",
@@ -356,6 +359,7 @@ const server = http.createServer(async (request, response) => {
         message: "Dataset path does not exist",
         status: 400,
         details: {
+          category: "dataset",
           stage: "dataset_preparation",
           context: {
             dataset_path: datasetPath,
@@ -393,6 +397,7 @@ const server = http.createServer(async (request, response) => {
         message: `Run not found: ${pathSegments[1]}`,
         status: 404,
         details: {
+          category: "request",
           run_id: pathSegments[1],
         },
         trace_id: "mock-trace-run-not-found",
@@ -416,6 +421,7 @@ const server = http.createServer(async (request, response) => {
     message: "Unknown route",
     status: 404,
     details: {
+      category: "core",
       path: url.pathname,
     },
     trace_id: "mock-trace-not-found",

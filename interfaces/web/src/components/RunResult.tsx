@@ -114,6 +114,12 @@ function PersistedRunError({ runDetail }: { runDetail: RunDetail }) {
   }
 
   const details = runDetail.error.details ? JSON.stringify(runDetail.error.details, null, 2) : null;
+  const category =
+    runDetail.error.details &&
+    typeof runDetail.error.details === "object" &&
+    typeof runDetail.error.details.category === "string"
+      ? runDetail.error.details.category
+      : null;
 
   return (
     <article className="result-card result-error-card">
@@ -126,6 +132,12 @@ function PersistedRunError({ runDetail }: { runDetail: RunDetail }) {
           <dt>Stage</dt>
           <dd>{runDetail.error.stage}</dd>
         </div>
+        {category ? (
+          <div>
+            <dt>Category</dt>
+            <dd>{category}</dd>
+          </div>
+        ) : null}
       </dl>
       {details ? <pre className="details-block">{details}</pre> : null}
     </article>

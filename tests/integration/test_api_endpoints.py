@@ -1,3 +1,5 @@
+import json
+from io import StringIO
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -16,7 +18,7 @@ from application import (
 from artifacts import FilesystemRunMetadataStore, RUN_METADATA_FILENAME
 from data import PreparedDataset
 from interfaces.api import create_app
-from observability import ApplicationHealth, ProveedorHealth
+from observability import ApplicationHealth, ProveedorHealth, clear_context, configure_structured_logging
 from runtime import AgentRegistry, InMemoryRunTracker, RegisteredAgent, RuntimeCoordinator
 
 
@@ -87,9 +89,21 @@ class StubReadinessService:
         )
 
 
+def configure_log_capture() -> StringIO:
+    stream = StringIO()
+    clear_context()
+    configure_structured_logging(stream=stream, force=True)
+    return stream
+
+
+def parse_log_lines(stream: StringIO) -> list[dict[str, object]]:
+    return [json.loads(line) for line in stream.getvalue().splitlines() if line.strip()]
+
+
 def test_post_runs_executes_core_and_persists_detail(repo_tmp_path: Path) -> None:
     artifacts_root = repo_tmp_path / "artifacts"
     store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)
+    log_stream = configure_log_capture()
 
     def fake_agent_executor(request: RunRequest, context: AgentExecutionContext) -> AgentResult:
         return AgentResult(
@@ -124,6 +138,7 @@ def test_post_runs_executes_core_and_persists_detail(repo_tmp_path: Path) -> Non
     )
 
     assert response.status_code == 200
+    assert response.headers["X-Trace-Id"]
     payload = response.json()
     run_id = payload["run_id"]
 
@@ -133,6 +148,17 @@ def test_post_runs_executes_core_and_persists_detail(repo_tmp_path: Path) -> Non
     assert payload["result"]["narrative"] == "Narrativa API"
     assert payload["artifact_manifest"]["run_id"] == run_id
     assert (artifacts_root / run_id / RUN_METADATA_FILENAME).is_file()
+
+    log_payloads = parse_log_lines(log_stream)
+    request_started = next(item for item in log_payloads if item["event"] == "request_started")
+    run_started = next(item for item in log_payloads if item["event"] == "run_started")
+    run_succeeded = next(item for item in log_payloads if item["event"] == "run_succeeded")
+    assert request_started["trace_id"] == response.headers["X-Trace-Id"]
+    assert run_started["trace_id"] == response.headers["X-Trace-Id"]
+    assert run_started["run_id"] == run_id
+    assert run_started["session_id"] == payload["session_id"]
+    assert run_succeeded["trace_id"] == response.headers["X-Trace-Id"]
+    assert run_succeeded["run_id"] == run_id
 
 
 def test_post_runs_with_invalid_payload_returns_api_error_shape(repo_tmp_path: Path) -> None:
@@ -169,11 +195,14 @@ def test_post_runs_with_invalid_payload_returns_api_error_shape(repo_tmp_path: P
     )
 
     assert response.status_code == 400
+    assert response.headers["X-Trace-Id"]
     payload = response.json()
     assert payload["code"] == "invalid_request"
     assert payload["status"] == 400
     assert payload["details"]["stage"] == "request_validation"
+    assert payload["details"]["category"] == "request"
     assert payload["trace_id"]
+    assert payload["trace_id"] == response.headers["X-Trace-Id"]
 
 
 def test_health_endpoints_reuse_operational_shapes(repo_tmp_path: Path) -> None:
@@ -203,9 +232,11 @@ def test_health_endpoints_reuse_operational_shapes(repo_tmp_path: Path) -> None:
     provider_response = client.get("/health/proveedor")
 
     assert response.status_code == 200
+    assert response.headers["X-Trace-Id"]
     assert response.json()["status"] == "ok"
     assert response.json()["artifacts_root"] == str(artifacts_root)
     assert provider_response.status_code == 200
+    assert provider_response.headers["X-Trace-Id"]
     assert provider_response.json()["proveedor"] == "ollama"
     assert provider_response.json()["model_available"] is True
 
@@ -335,6 +366,7 @@ def test_failed_runs_are_listed_and_detail_preserves_persisted_error(repo_tmp_pa
     )
 
     assert response.status_code == 503
+    assert response.headers["X-Trace-Id"]
 
     list_response = client.get("/runs")
     assert list_response.status_code == 200
@@ -350,6 +382,7 @@ def test_failed_runs_are_listed_and_detail_preserves_persisted_error(repo_tmp_pa
     assert detail_payload["status"] == "failed"
     assert detail_payload["error"]["code"] == "llm_provider_unavailable"
     assert detail_payload["error"]["stage"] == "agent_execution"
+    assert detail_payload["error"]["details"]["category"] == "provider"
     assert detail_payload["result"] is None
 
 
@@ -379,8 +412,10 @@ def test_get_unknown_run_returns_404_api_error(repo_tmp_path: Path) -> None:
     response = client.get("/runs/run-missing")
 
     assert response.status_code == 404
+    assert response.headers["X-Trace-Id"]
     payload = response.json()
     assert payload["code"] == "run_not_found"
+    assert payload["details"]["category"] == "request"
     assert payload["details"]["run_id"] == "run-missing"
 
 
@@ -468,8 +503,10 @@ def test_provider_unavailable_error_maps_to_503(repo_tmp_path: Path) -> None:
     )
 
     assert response.status_code == 503
+    assert response.headers["X-Trace-Id"]
     payload = response.json()
     assert payload["code"] == "llm_provider_unavailable"
+    assert payload["details"]["category"] == "provider"
     assert payload["details"]["stage"] == "agent_execution"
 
 

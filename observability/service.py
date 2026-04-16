@@ -17,7 +17,7 @@ from adapters import (
 )
 from agents.data_analyst import DATA_ANALYST_AGENT_CONFIG, DATA_ANALYST_AGENT_ID
 from application.contracts import RunRequest
-from runtime import AgentRegistry, build_default_agent_registry
+from runtime.registry import AgentRegistry, build_default_agent_registry
 
 from .models import AppConfig, ApplicationHealth, ProveedorHealth, ReadinessReport
 
@@ -181,4 +181,3 @@ def build_default_operational_readiness_service(
         agent_registry=build_default_agent_registry(),
         artifacts_root=artifacts_root,
     )
-

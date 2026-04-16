@@ -218,3 +218,26 @@ Cuando crezca la observabilidad, esta guía deberá ampliarse con:
 - cómo leer logs estructurados;
 - cómo ejecutar smoke UI + API + proveedor;
 - cómo diagnosticar correlación por `session_id` y `run_id`.
+
+## Logs estructurados mínimos actuales
+La Fase 5 añade logs JSON a consola para API, CLI y runtime.
+
+### Qué campos mínimos esperar
+- `event`;
+- `trace_id`;
+- `session_id` cuando exista;
+- `run_id` cuando exista;
+- `level`;
+- `logger`;
+- `duration_ms` en eventos de cierre cuando aplique.
+
+### Eventos operativos principales
+- `command_started` para CLI;
+- `request_started` y `request_completed` para CLI/API;
+- `run_started`, `dataset_preparing`, `agent_running`, `run_succeeded`, `run_failed` para runtime.
+
+### Cómo correlacionar un error desde API/UI
+1. Capturar `trace_id` desde el cuerpo del error o del header `X-Trace-Id`.
+2. Buscar en los logs JSON ese mismo `trace_id`.
+3. Si el request llegó a crear run, seguir además `run_id` y `session_id`.
+4. Usar `details.category` para distinguir si el fallo pertenece a `request`, `dataset`, `provider` o `core`.

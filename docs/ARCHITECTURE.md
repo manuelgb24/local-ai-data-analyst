@@ -74,6 +74,7 @@ La UI y la API se apoyan en el mismo core existente. No deben reimplementar:
 - Debe cubrir logs estructurados, correlación por `session_id` y `run_id`, health y readiness.
 - Debe crecer como capacidad transversal del producto, no como lógica de interfaz.
 - Desde la Fase 1 ya puede alojar un servicio compartido de readiness/configuración reutilizable por CLI ahora y por API/UI más adelante.
+- Desde la Fase 5 centraliza además logs JSON a consola, `trace_id` por request/comando y clasificación mínima de errores (`request`, `dataset`, `provider`, `core`).
 
 ## Flujos principales
 
@@ -103,6 +104,14 @@ El producto necesita dos superficies operativas explícitas:
 - **health del proveedor**: confirma que Ollama responde y que el modelo requerido está disponible.
 
 Esto no cambia el core analítico, pero sí forma parte de la arquitectura del producto.
+
+## Correlación operativa mínima
+La observabilidad mínima del producto queda distribuida así:
+- **API local**: genera `trace_id` por request, lo devuelve en `X-Trace-Id` y lo conserva en el cuerpo de errores.
+- **CLI**: genera `trace_id` por comando, mantiene salida humana estable y deja la telemetría técnica en logs JSON de consola.
+- **Runtime**: añade `session_id` y `run_id` a los eventos del ciclo de vida del run (`run_started`, `dataset_preparing`, `agent_running`, `run_succeeded`, `run_failed`).
+
+La correlación cruza `interfaces/api` o `interfaces/cli` con `runtime` sin introducir un backend remoto ni persistencia nueva de logs.
 
 ## Papel del runtime
 El `runtime` sigue siendo la pieza central del sistema. Su responsabilidad no cambia:

@@ -5,10 +5,10 @@ from __future__ import annotations
 import argparse
 from collections.abc import Sequence
 from pathlib import Path
-from uuid import uuid4
+from time import perf_counter
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -24,7 +24,19 @@ from application import (
 )
 from artifacts import FilesystemRunMetadataStore
 from data import LocalDatasetPreparer
-from observability import OperationalReadinessService, build_default_operational_readiness_service
+from observability import (
+    ERROR_CATEGORY_CORE,
+    ERROR_CATEGORY_REQUEST,
+    OperationalReadinessService,
+    bound_context,
+    build_api_error_details,
+    build_default_operational_readiness_service,
+    classify_run_error,
+    configure_structured_logging,
+    generate_trace_id,
+    get_logger,
+    log_event,
+)
 from runtime import InMemoryRunTracker, RuntimeCoordinator, build_default_agent_registry
 
 from .models import CreateRunRequestPayload
@@ -34,6 +46,7 @@ DEFAULT_API_HOST = "127.0.0.1"
 DEFAULT_API_PORT = 8000
 DEFAULT_ARTIFACTS_ROOT = "artifacts/runs"
 _PROVIDER_UNAVAILABLE_CODES = frozenset({"llm_provider_unavailable"})
+_LOGGER = get_logger("api")
 
 
 def build_default_run_metadata_store(
@@ -63,6 +76,7 @@ def create_app(
     operational_readiness_service: OperationalReadinessService | None = None,
     run_metadata_store: FilesystemRunMetadataStore | None = None,
 ) -> FastAPI:
+    configure_structured_logging()
     store = run_metadata_store or build_default_run_metadata_store(artifacts_root=artifacts_root)
     coordinator = runtime_coordinator or build_default_runtime_coordinator(
         artifacts_root=artifacts_root,
@@ -83,29 +97,79 @@ def create_app(
         version="0.2.0",
     )
 
+    @app.middleware("http")
+    async def add_trace_id_and_request_logs(request: Request, call_next):  # type: ignore[no-untyped-def]
+        trace_id = generate_trace_id()
+        request.state.trace_id = trace_id
+        started_at = perf_counter()
+
+        with bound_context(
+            trace_id=trace_id,
+            interface="api",
+            method=request.method,
+            path=request.url.path,
+        ):
+            log_event(_LOGGER, "request_started")
+            response = await call_next(request)
+            response.headers["X-Trace-Id"] = trace_id
+            log_event(
+                _LOGGER,
+                "request_completed",
+                status_code=response.status_code,
+                duration_ms=round((perf_counter() - started_at) * 1000, 2),
+            )
+            return response
+
     @app.exception_handler(RequestValidationError)
-    async def handle_request_validation_error(request, exc: RequestValidationError) -> JSONResponse:  # type: ignore[no-untyped-def]
-        trace_id = _trace_id()
+    async def handle_request_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+        trace_id = _trace_id(request)
+        log_event(
+            _LOGGER,
+            "request_failed",
+            level=40,
+            code="invalid_request",
+            category=ERROR_CATEGORY_REQUEST,
+            status_code=400,
+        )
         return JSONResponse(
             status_code=400,
+            headers={"X-Trace-Id": trace_id},
             content=build_api_error(
                 code="invalid_request",
                 message="Request payload failed validation",
                 status=400,
-                details={"errors": exc.errors()},
+                details=build_api_error_details(
+                    category=ERROR_CATEGORY_REQUEST,
+                    stage=ErrorStage.REQUEST_VALIDATION.value,
+                    errors=exc.errors(),
+                ),
                 trace_id=trace_id,
             ),
         )
 
     @app.exception_handler(RunError)
-    async def handle_run_error(request, exc: RunError) -> JSONResponse:  # type: ignore[no-untyped-def]
+    async def handle_run_error(request: Request, exc: RunError) -> JSONResponse:
         status_code = _status_code_for_run_error(exc)
-        trace_id = _trace_id()
-        details = {"stage": exc.stage.value}
-        if exc.details:
-            details["context"] = exc.details
+        trace_id = _trace_id(request)
+        category = classify_run_error(exc)
+        error_context = None if not exc.details else {key: value for key, value in exc.details.items() if key != "category"}
+        details = build_api_error_details(
+            category=category,
+            stage=exc.stage.value,
+            context=error_context,
+        )
+        log_event(
+            _LOGGER,
+            "request_failed",
+            level=40,
+            code=exc.code,
+            category=category,
+            stage=exc.stage.value,
+            status_code=status_code,
+        )
         return JSONResponse(
             status_code=status_code,
+            headers={"X-Trace-Id": trace_id},
             content=build_api_error(
                 code=exc.code,
                 message=exc.message,
@@ -116,29 +180,54 @@ def create_app(
         )
 
     @app.exception_handler(RunNotFoundError)
-    async def handle_run_not_found(request, exc: RunNotFoundError) -> JSONResponse:  # type: ignore[no-untyped-def]
-        trace_id = _trace_id()
+    async def handle_run_not_found(request: Request, exc: RunNotFoundError) -> JSONResponse:
+        trace_id = _trace_id(request)
+        log_event(
+            _LOGGER,
+            "request_failed",
+            level=40,
+            code="run_not_found",
+            category=ERROR_CATEGORY_REQUEST,
+            status_code=404,
+        )
         return JSONResponse(
             status_code=404,
+            headers={"X-Trace-Id": trace_id},
             content=build_api_error(
                 code="run_not_found",
                 message=f"Run not found: {exc.run_id}",
                 status=404,
-                details={"run_id": exc.run_id},
+                details=build_api_error_details(
+                    category=ERROR_CATEGORY_REQUEST,
+                    run_id=exc.run_id,
+                ),
                 trace_id=trace_id,
             ),
         )
 
     @app.exception_handler(Exception)
-    async def handle_unexpected_error(request, exc: Exception) -> JSONResponse:  # type: ignore[no-untyped-def]
-        trace_id = _trace_id()
+    async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+        trace_id = _trace_id(request)
+        log_event(
+            _LOGGER,
+            "request_failed",
+            level=40,
+            code="unexpected_api_error",
+            category=ERROR_CATEGORY_CORE,
+            status_code=500,
+            error_type=type(exc).__name__,
+        )
         return JSONResponse(
             status_code=500,
+            headers={"X-Trace-Id": trace_id},
             content=build_api_error(
                 code="unexpected_api_error",
                 message="Unexpected API error",
                 status=500,
-                details={"error_type": type(exc).__name__},
+                details=build_api_error_details(
+                    category=ERROR_CATEGORY_CORE,
+                    error_type=type(exc).__name__,
+                ),
                 trace_id=trace_id,
             ),
         )
@@ -191,6 +280,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         create_app(artifacts_root=args.artifacts_root),
         host=args.host,
         port=args.port,
+        access_log=False,
+        log_config=None,
     )
     return 0
 
@@ -223,6 +314,9 @@ def _status_code_for_run_error(error: RunError) -> int:
     return 500
 
 
-def _trace_id() -> str:
-    return uuid4().hex
-
+def _trace_id(request: Request | None = None) -> str:
+    if request is not None:
+        trace_id = getattr(request.state, "trace_id", None)
+        if isinstance(trace_id, str) and trace_id.strip():
+            return trace_id
+    return generate_trace_id()

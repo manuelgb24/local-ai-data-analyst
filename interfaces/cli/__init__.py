@@ -8,6 +8,7 @@ from enum import Enum
 import json
 import sys
 from pathlib import Path
+from time import perf_counter
 from typing import Any, TextIO
 
 from application import (
@@ -19,11 +20,22 @@ from application import (
     RunRequest,
 )
 from data import LocalDatasetPreparer
-from observability import OperationalReadinessService, ReadinessReport, build_default_operational_readiness_service
+from observability import (
+    OperationalReadinessService,
+    ReadinessReport,
+    bound_context,
+    build_default_operational_readiness_service,
+    configure_structured_logging,
+    ensure_error_category,
+    generate_trace_id,
+    get_logger,
+    log_event,
+)
 from runtime import RuntimeCoordinator, build_default_agent_registry
 
 DEFAULT_ARTIFACTS_ROOT = "artifacts/runs"
 _KNOWN_COMMANDS = frozenset({"run", "status", "config"})
+_LOGGER = get_logger("cli")
 
 
 def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
@@ -258,40 +270,69 @@ def execute_cli(
 ) -> int:
     """Execute the CLI entrypoint and return a process exit code."""
 
+    configure_structured_logging()
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
     argv = list(sys.argv[1:] if argv is None else argv)
+    command_name = argv[0] if argv and argv[0] in _KNOWN_COMMANDS else "run"
+    trace_id = generate_trace_id()
+    started_at = perf_counter()
 
-    if not argv:
-        build_command_parser().print_help(stdout)
-        return 2
+    with bound_context(trace_id=trace_id, interface="cli", command=command_name):
+        log_event(_LOGGER, "command_started", argv=argv)
 
-    if argv[0] in _KNOWN_COMMANDS:
-        args = build_command_parser().parse_args(argv)
-        if args.command == "status":
-            readiness_service = operational_readiness_service or build_default_operational_service()
-            report = GetOperationalStatusUseCase(readiness_service).execute()
-            stdout.write(render_status(report, json_output=args.json_output))
-            return 0 if report.ready else 1
-        if args.command == "config":
-            readiness_service = operational_readiness_service or build_default_operational_service()
-            config = GetAppConfigUseCase(readiness_service).execute()
-            stdout.write(render_config(config, json_output=args.json_output))
-            return 0
+        if not argv:
+            build_command_parser().print_help(stdout)
+            log_event(
+                _LOGGER,
+                "request_completed",
+                duration_ms=round((perf_counter() - started_at) * 1000, 2),
+                exit_code=2,
+            )
+            return 2
+
+        if argv[0] in _KNOWN_COMMANDS:
+            args = build_command_parser().parse_args(argv)
+            if args.command == "status":
+                readiness_service = operational_readiness_service or build_default_operational_service()
+                report = GetOperationalStatusUseCase(readiness_service).execute()
+                exit_code = 0 if report.ready else 1
+                stdout.write(render_status(report, json_output=args.json_output))
+                log_event(
+                    _LOGGER,
+                    "request_completed",
+                    duration_ms=round((perf_counter() - started_at) * 1000, 2),
+                    exit_code=exit_code,
+                    ready=report.ready,
+                )
+                return exit_code
+            if args.command == "config":
+                readiness_service = operational_readiness_service or build_default_operational_service()
+                config = GetAppConfigUseCase(readiness_service).execute()
+                stdout.write(render_config(config, json_output=args.json_output))
+                log_event(
+                    _LOGGER,
+                    "request_completed",
+                    duration_ms=round((perf_counter() - started_at) * 1000, 2),
+                    exit_code=0,
+                )
+                return 0
+            return _execute_run(
+                args,
+                stdout=stdout,
+                stderr=stderr,
+                runtime_coordinator=runtime_coordinator,
+                started_at=started_at,
+            )
+
+        args = build_parser().parse_args(argv)
         return _execute_run(
             args,
             stdout=stdout,
             stderr=stderr,
             runtime_coordinator=runtime_coordinator,
+            started_at=started_at,
         )
-
-    args = build_parser().parse_args(argv)
-    return _execute_run(
-        args,
-        stdout=stdout,
-        stderr=stderr,
-        runtime_coordinator=runtime_coordinator,
-    )
 
 
 def _execute_run(
@@ -300,19 +341,46 @@ def _execute_run(
     stdout: TextIO,
     stderr: TextIO,
     runtime_coordinator: RuntimeCoordinator | None,
+    started_at: float,
 ) -> int:
     coordinator = runtime_coordinator or build_default_runtime_coordinator()
     use_case = RunAnalysisUseCase(runtime=coordinator)
+    log_event(
+        _LOGGER,
+        "request_started",
+        agent_id=getattr(args, "agent_id", None),
+        dataset_path=getattr(args, "dataset_path", None),
+        provided_session_id=getattr(args, "session_id", None),
+    )
 
     try:
         request = build_run_request(args)
         result = use_case.execute(request)
         run_record = coordinator.tracker.get(result.artifact_manifest.run_id)
     except RunError as error:
+        error = ensure_error_category(error)
         stderr.write(render_error(error))
+        log_event(
+            _LOGGER,
+            "request_completed",
+            level=40,
+            duration_ms=round((perf_counter() - started_at) * 1000, 2),
+            exit_code=1,
+            code=error.code,
+            stage=error.stage.value,
+            category=(error.details or {}).get("category"),
+        )
         return 1
 
     stdout.write(render_success(result, session_id=run_record.session_id))
+    log_event(
+        _LOGGER,
+        "request_completed",
+        duration_ms=round((perf_counter() - started_at) * 1000, 2),
+        exit_code=0,
+        run_id=result.artifact_manifest.run_id,
+        session_id=run_record.session_id,
+    )
     return 0
 
 

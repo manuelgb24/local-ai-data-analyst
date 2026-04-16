@@ -55,6 +55,8 @@ Comprobar que la API local reutiliza el core correctamente y expone contratos co
 - `GET /health`;
 - `GET /health/proveedor`;
 - mapeo consistente de errores del core a `ApiError`.
+- header `X-Trace-Id` en respuestas.
+- `details.category` en errores API.
 
 ### Tipos de prueba esperados
 - contract tests de request/response;
@@ -134,6 +136,7 @@ Asegurar que el producto es usable en un entorno real local-first.
 - modelo `deepseek-r1:8b` disponible;
 - mensajes accionables cuando falle readiness;
 - coherencia entre estado real y estado expuesto por la aplicación.
+- correlación mínima por `trace_id`, `session_id` y `run_id` en logs JSON.
 
 ### Casos críticos
 - Ollama no instalado;
@@ -190,6 +193,8 @@ Comprobar que la experiencia de arranque del producto es comprensible y verifica
 - `status --json` mantiene un shape estable con `application`, `provider`, `issues` y `ready`;
 - `config` no expone secretos;
 - los smokes de proveedor reutilizan la misma base de probes que la CLI operativa.
+- la salida humana de CLI no se contamina con logs estructurados.
+- los logs JSON de consola conservan `trace_id` y, cuando aplica, `session_id`/`run_id`.
 
 ---
 
@@ -275,3 +280,6 @@ La API local ya queda cubierta por:
 La UI web ya queda cubierta por:
 - `npm --prefix interfaces/web run build`
 - `npm --prefix interfaces/web run test:e2e`
+La observabilidad mínima correlada queda cubierta además por:
+- `pytest tests/unit/test_observability_logging.py -q`
+- `pytest tests/integration/test_runtime_flow.py -q`

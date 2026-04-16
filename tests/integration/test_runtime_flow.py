@@ -1,3 +1,5 @@
+import json
+from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -15,6 +17,7 @@ from application import (
     RunAnalysisUseCase,
 )
 from data import PreparedDataset
+from observability import bind_context, clear_context, configure_structured_logging, reset_context
 from runtime import AgentRegistry, InMemoryRunTracker, RegisteredAgent, RuntimeCoordinator
 
 
@@ -58,6 +61,10 @@ def build_registry(agent_executor) -> AgentRegistry:
             )
         }
     )
+
+
+def parse_log_lines(stream: StringIO) -> list[dict[str, object]]:
+    return [json.loads(line) for line in stream.getvalue().splitlines() if line.strip()]
 
 
 def test_run_analysis_use_case_executes_happy_path_with_context_and_tracking(repo_tmp_path: Path) -> None:
@@ -186,3 +193,79 @@ def test_runtime_marks_failed_when_agent_execution_raises_run_error(repo_tmp_pat
         RunState.RUNNING_AGENT,
         RunState.FAILED,
     ]
+
+
+def test_runtime_logs_correlated_trace_session_and_run_ids(repo_tmp_path: Path) -> None:
+    tracker = InMemoryRunTracker()
+    log_stream = StringIO()
+    clear_context()
+    configure_structured_logging(stream=log_stream, force=True)
+
+    def fake_dataset_preparer(request: RunRequest, run_id: str) -> PreparedDataset:
+        return PreparedDataset(
+            dataset_profile=build_profile(),
+            duckdb_context={"connection": "fake", "run_id": run_id},
+        )
+
+    def fake_agent_executor(request: RunRequest, context: AgentExecutionContext) -> AgentResult:
+        return build_result(context.run_id)
+
+    use_case = RunAnalysisUseCase(
+        runtime=RuntimeCoordinator(
+            dataset_preparer=fake_dataset_preparer,
+            agent_registry=build_registry(fake_agent_executor),
+            tracker=tracker,
+            artifacts_root=repo_tmp_path,
+        )
+    )
+
+    token = bind_context(trace_id="trace-runtime-123")
+    try:
+        result = use_case.execute(build_request(session_id="session-existing"))
+    finally:
+        reset_context(token)
+        clear_context()
+
+    record = tracker.get(result.artifact_manifest.run_id)
+    payloads = parse_log_lines(log_stream)
+    run_started = next(item for item in payloads if item["event"] == "run_started")
+    dataset_preparing = next(item for item in payloads if item["event"] == "dataset_preparing")
+    run_succeeded = next(item for item in payloads if item["event"] == "run_succeeded")
+
+    assert run_started["trace_id"] == "trace-runtime-123"
+    assert run_started["session_id"] == "session-existing"
+    assert run_started["run_id"] == record.run_id
+    assert dataset_preparing["trace_id"] == "trace-runtime-123"
+    assert dataset_preparing["run_id"] == record.run_id
+    assert run_succeeded["trace_id"] == "trace-runtime-123"
+    assert run_succeeded["session_id"] == "session-existing"
+    assert run_succeeded["run_id"] == record.run_id
+
+
+def test_runtime_adds_category_to_persisted_failures(repo_tmp_path: Path) -> None:
+    tracker = InMemoryRunTracker()
+    captured_run_id: dict[str, str] = {}
+
+    def fake_dataset_preparer(request: RunRequest, run_id: str) -> PreparedDataset:
+        captured_run_id["value"] = run_id
+        raise RunError(
+            code="dataset_not_found",
+            message="No se encontró el dataset",
+            stage=ErrorStage.DATASET_PREPARATION,
+        )
+
+    use_case = RunAnalysisUseCase(
+        runtime=RuntimeCoordinator(
+            dataset_preparer=fake_dataset_preparer,
+            agent_registry=build_registry(lambda request, context: build_result(context.run_id)),
+            tracker=tracker,
+            artifacts_root=repo_tmp_path,
+        )
+    )
+
+    with pytest.raises(RunError):
+        use_case.execute(build_request())
+
+    record = tracker.get(captured_run_id["value"])
+    assert record.error is not None
+    assert record.error.details == {"category": "dataset"}

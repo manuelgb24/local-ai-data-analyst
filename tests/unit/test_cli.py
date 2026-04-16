@@ -5,7 +5,14 @@ import pytest
 
 from application import ArtifactManifest, ErrorStage, RunError, TableResult
 from interfaces.cli import execute_cli, build_run_request, render_config, render_error, render_status, render_success
-from observability import AppConfig, ApplicationHealth, ProveedorHealth, ReadinessReport
+from observability import (
+    AppConfig,
+    ApplicationHealth,
+    ProveedorHealth,
+    ReadinessReport,
+    clear_context,
+    configure_structured_logging,
+)
 
 
 class _ResultStub:
@@ -197,3 +204,48 @@ def test_execute_cli_config_renders_human_readable_output() -> None:
     assert stderr.getvalue() == ""
     assert "Effective config:" in stdout.getvalue()
     assert "- required_model: deepseek-r1:8b" in stdout.getvalue()
+
+
+def test_execute_cli_logs_to_structured_stream_without_polluting_human_output(repo_tmp_path) -> None:
+    class _StubReadinessService:
+        def get_readiness_report(self) -> ReadinessReport:
+            return ReadinessReport(
+                application=ApplicationHealth(
+                    ready=True,
+                    default_agent_id="data_analyst",
+                    artifacts_root=str(repo_tmp_path / "artifacts"),
+                    checks={"agent_registry": True, "artifacts_root_writable": True, "config_available": True},
+                ),
+                provider=ProveedorHealth(
+                    proveedor="ollama",
+                    endpoint="http://127.0.0.1:11434",
+                    reachable=True,
+                    model="deepseek-r1:8b",
+                    model_available=True,
+                    binary_available=True,
+                    details=[],
+                ),
+                issues=[],
+            )
+
+        def get_app_config(self) -> AppConfig:
+            raise AssertionError("config should not be called in this test")
+
+    log_stream = StringIO()
+    stdout = StringIO()
+    stderr = StringIO()
+    clear_context()
+    configure_structured_logging(stream=log_stream, force=True)
+
+    exit_code = execute_cli(
+        ["status", "--json"],
+        stdout=stdout,
+        stderr=stderr,
+        operational_readiness_service=_StubReadinessService(),
+    )
+
+    assert exit_code == 0
+    assert stderr.getvalue() == ""
+    assert '"ready": true' in stdout.getvalue()
+    assert '"event": "command_started"' in log_stream.getvalue()
+    assert '"event": "request_completed"' in log_stream.getvalue()
