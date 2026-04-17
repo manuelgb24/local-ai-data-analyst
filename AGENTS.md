@@ -142,3 +142,8 @@ Una tarea se considera terminada solo si:
 - Usa `docs/TASKS.md` como guía secuencial principal de trabajo futuro.
 - Valida el resultado real antes de cerrar una tarea.
 - No inventes arquitectura nueva ni reabras decisiones ya congeladas sin documentarlo.
+
+## Notas operativas para sesiones de agentes
+- En este entorno Windows sandbox, `npm --prefix interfaces/web run build` puede fallar con `spawn EPERM` por una limitación del sandbox/tooling, no necesariamente por una regresión del repo.
+- La validación real del frontend debe correrse fuera del sandbox o con permisos escalados cuando ese fallo aparezca.
+- No perseguir ese `spawn EPERM` como bug del producto mientras el build siga pasando en host real.
