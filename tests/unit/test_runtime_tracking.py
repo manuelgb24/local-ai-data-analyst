@@ -159,6 +159,7 @@ def test_runtime_coordinator_wraps_unexpected_agent_exception_as_run_error(repo_
     assert record.error is not None
     assert record.error.stage is ErrorStage.AGENT_EXECUTION
     assert record.error.details == {
+        "category": "core",
         "run_id": run_id,
         "error_type": "RuntimeError",
         "error_message": "agent exploded",
@@ -200,6 +201,7 @@ def test_runtime_coordinator_fails_unknown_agent_before_preparing_dataset(repo_t
     assert record.error == exc_info.value
     assert exc_info.value.stage is ErrorStage.AGENT_RESOLUTION
     assert exc_info.value.details == {
+        "category": "request",
         "agent_id": "unknown_agent",
         "available_agent_ids": ["data_analyst"],
     }

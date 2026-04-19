@@ -206,15 +206,17 @@ Preparar la etapa en la que el producto se distribuya de forma más formal.
 ### Debe cubrir
 - instalación reproducible;
 - arranque reproducible;
+- ejecución repo-local de lanes automáticos (`python` + `web`);
+- separación explícita entre validación automatizable y smoke real/manual;
 - serving de la UI build desde la API local;
 - fallo claro cuando falta `interfaces/web/dist`;
 - smoke manual documentado del arranque monoproceso;
 - verificación de que la documentación de operación coincide con el empaquetado real.
 
 ### Comandos de referencia actuales
-- `pytest tests/unit/test_api_app.py -q`
-- `pytest tests/integration/test_api_endpoints.py -q`
-- `npm --prefix interfaces/web run build`
+- `python scripts/ci_checks.py python`
+- `python scripts/ci_checks.py web`
+- `python scripts/ci_checks.py smoke`
 - validación manual: `python -m interfaces.api --serve-web`
 
 ---
@@ -271,26 +273,30 @@ La fase producto se considerará bien encaminada cuando:
 - la UI web sea validable con browser E2E;
 - el historial persistente local sea comprobable;
 - el estado operativo local sea visible y confiable;
-- los smoke reales sigan siendo explícitos y reproducibles.
+- los smoke reales sigan siendo explícitos y reproducibles;
+- exista un runner repo-local único para lanes automáticos y smokes reales.
 
 ## Comandos de verificación de referencia
-Mientras no exista otro runner formal:
-- core unitario: `pytest tests/unit -q`
-- core integración: `pytest tests/integration -q`
-- core E2E actual: `pytest tests/e2e -q`
-- smoke adapter real: `pytest tests/smoke/test_ollama_adapter.py -q -rs`
-- smoke CLI real: `pytest tests/smoke/test_real_cli_workflow.py -q -rs`
+La Fase 7 deja un runner formal repo-local:
+- lane automático Python: `python scripts/ci_checks.py python`
+- lane automático Web: `python scripts/ci_checks.py web`
+- lane real/local con Ollama: `python scripts/ci_checks.py smoke`
 
-Cuando aparezcan API y UI, deberán añadirse sus comandos de referencia a este documento antes de dar esa fase por cerrada.
-La API local ya queda cubierta por:
-- `pytest tests/integration/test_api_endpoints.py -q`
-La UI web ya queda cubierta por:
-- `npm --prefix interfaces/web run build`
-- `npm --prefix interfaces/web run test:e2e`
-La observabilidad mínima correlada queda cubierta además por:
-- `pytest tests/unit/test_observability_logging.py -q`
-- `pytest tests/integration/test_runtime_flow.py -q`
-El packaging local monoproceso queda cubierto además por:
-- `pytest tests/unit/test_api_app.py -q`
-- `pytest tests/integration/test_api_endpoints.py -q`
-- `python -m interfaces.api --serve-web`
+Cobertura directa de cada lane:
+- `python`:
+  - `pytest tests/unit -q`
+  - `pytest tests/integration -q`
+  - `pytest tests/e2e -q`
+- `web`:
+  - `npm --prefix interfaces/web run build`
+  - `npm --prefix interfaces/web run test:e2e`
+- `smoke`:
+  - `pytest tests/smoke/test_ollama_adapter.py -q -rs`
+  - `pytest tests/smoke/test_real_cli_workflow.py -q -rs`
+
+Validaciones complementarias que siguen siendo obligatorias para release:
+- smoke manual de packaging local: `python -m interfaces.api --serve-web`
+- verificación manual del flujo UI empaquetado desde `http://127.0.0.1:8000/`
+
+Nota operativa:
+- en este entorno Windows sandbox, `npm --prefix interfaces/web run build` puede fallar con `spawn EPERM`; la validación real del lane `web` debe ejecutarse en host real o en CI.

@@ -219,7 +219,37 @@ La forma recomendada de distribución local en esta fase es repo-local y monopro
 
 No se introducen todavía zip, binario, instalador ni bundle autónomo fuera del repo.
 
+## Runner operativo de Fase 7
+La validación repo-local queda formalizada en tres lanes:
+
+```bash
+python scripts/ci_checks.py python
+python scripts/ci_checks.py web
+python scripts/ci_checks.py smoke
+```
+
+Semántica operativa:
+- `python` valida core, API y E2E Python rápidos;
+- `web` valida build empaquetada y browser E2E;
+- `smoke` valida integraciones reales con Ollama y la CLI sobre host preparado.
+
+La validación manual final del runtime empaquetado se mantiene aparte:
+
+```bash
+python -m interfaces.api --serve-web
+```
+
 ## Troubleshooting básico
+
+### `npm --prefix interfaces/web run build` falla con `spawn EPERM`
+Síntoma:
+- el build web falla en este entorno Windows sandbox con `Error: spawn EPERM`.
+
+Lectura:
+- restricción del sandbox/tooling, no regresión del producto.
+
+Acción:
+- correr el lane `python scripts/ci_checks.py web` en host real o en CI.
 
 ### `ollama` no está en PATH
 Síntoma:

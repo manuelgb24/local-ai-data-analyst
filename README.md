@@ -115,6 +115,22 @@ curl http://127.0.0.1:8000/runs
 - comprobar narrativa, hallazgos, tablas y artifacts del run seleccionado;
 - seleccionar un run previo del historial y verificar su detalle persistido.
 
+### Runner repo-local de validación
+La Fase 7 deja un runner único para validación y release hardening:
+
+```bash
+python scripts/ci_checks.py python
+python scripts/ci_checks.py web
+python scripts/ci_checks.py smoke
+```
+
+- `python` agrupa unit + integration + e2e Python;
+- `web` agrupa build + browser E2E de la UI;
+- `smoke` exige un host real con Ollama listo y `deepseek-r1:8b`.
+
+Nota operativa:
+- en este entorno Windows sandbox, `npm --prefix interfaces/web run build` puede fallar con `spawn EPERM`; valida el lane `web` en host real o en CI cuando ocurra esa restricción.
+
 ## Documentación clave
 - `docs/TASKS.md` — guía principal futura y roadmap operativo canónico.
 - `AGENTS.md` — guardrails del repo y reglas de trabajo.
@@ -127,6 +143,7 @@ curl http://127.0.0.1:8000/runs
 - `docs/OPERATIONS.md` — operación local y troubleshooting.
 - `docs/RELEASE_CHECKLIST.md` — checklist de release.
 - `docs/PRODUCT_SCOPE.md` — límites actuales del producto.
+- `.github/workflows/ci.yml` — workflow CI de Fase 7 para lanes `python` y `web`.
 
 ## Hacia dónde va ahora
 La siguiente secuencia de trabajo vive en `docs/TASKS.md` y arranca, tras el cierre del MVP, con:

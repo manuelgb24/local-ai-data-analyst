@@ -9,14 +9,13 @@ Definir la checklist mínima para publicar una versión usable del producto sin 
 - [ ] `README.md`, `docs/OPERATIONS.md` y `docs/TASKS.md` reflejan el comportamiento real y la secuencia vigente.
 - [ ] `docs/TASKS.md`, `docs/CONTRACTS.md`, `docs/PRODUCT_SCOPE.md` y `docs/ARCHITECTURE.md` son coherentes entre sí.
 
-## 2. Validación del core
-- [ ] `pytest tests/unit -q`
-- [ ] `pytest tests/integration -q`
-- [ ] `pytest tests/e2e -q`
+## 2. Gates automáticos de Fase 7
+- [ ] `python scripts/ci_checks.py python`
+- [ ] `python scripts/ci_checks.py web`
+- [ ] El workflow `.github/workflows/ci.yml` está en verde o existe evidencia equivalente de ejecución repo-local.
 
 ## 3. Validación real local
-- [ ] `pytest tests/smoke/test_ollama_adapter.py -q -rs`
-- [ ] `pytest tests/smoke/test_real_cli_workflow.py -q -rs`
+- [ ] `python scripts/ci_checks.py smoke`
 - [ ] Ollama responde en local.
 - [ ] `deepseek-r1:8b` está disponible.
 
@@ -33,8 +32,6 @@ Aplicar cuando exista cada superficie:
 - [ ] `python -m interfaces.api --serve-web` arranca sin errores cuando la build existe.
 
 ### UI web
-- [ ] `npm --prefix interfaces/web run build`
-- [ ] `npm --prefix interfaces/web run test:e2e`
 - [ ] Browser E2E del flujo principal con ruta manual de dataset.
 - [ ] Revisión manual de errores operativos visibles.
 - [ ] Acceso correcto a resultados y artifacts del último run.
@@ -58,3 +55,4 @@ Aplicar cuando exista cada superficie:
 - [ ] Un run válido produce narrativa y artifacts trazables.
 - [ ] Un error operativo real produce feedback entendible.
 - [ ] La versión puede explicarse y operarse sin conocimiento informal extra.
+- [ ] La separación entre gates automáticos (`python` + `web`) y gates reales/manuales (`smoke` + `--serve-web`) quedó respetada.

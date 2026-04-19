@@ -135,7 +135,7 @@ function PersistedRunError({ runDetail }: { runDetail: RunDetail }) {
         {category ? (
           <div>
             <dt>Category</dt>
-            <dd>{category}</dd>
+            <dd data-testid="persisted-error-category">{category}</dd>
           </div>
         ) : null}
       </dl>

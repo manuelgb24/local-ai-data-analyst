@@ -174,3 +174,10 @@
 - **Impacto**: Node.js queda como dependencia de build de la UI, mientras que el runtime local publicado usa mismo origen para UI y API.
 - **Descartes**: mantener dos procesos como historia principal de distribución, o generar ya zip/binario/instalador fuera del repo.
 - **Estado**: aceptada.
+
+## D-026 — La Fase 7 separa CI automatizable de smoke real de release
+- **Decisión**: formalizar la validación de release en dos capas: lanes automatizables (`python` + `web`) ejecutables desde `scripts/ci_checks.py` y GitHub Actions, y gates reales/manuales (`smoke` + `python -m interfaces.api --serve-web`) fuera del CI automático.
+- **Motivo**: permite endurecer CI y release sin fingir que Ollama real o el arranque monoproceso empaquetado son sustituibles por checks puramente sandboxed.
+- **Impacto**: `.github/workflows/ci.yml` cubre solo `python` y `web`; `smoke` exige host preparado con Ollama + `deepseek-r1:8b`; la checklist de release y la documentación operativa distinguen ambos tipos de validación.
+- **Descartes**: meter smokes reales de Ollama en el workflow CI por defecto, o tratar skips/limitaciones de entorno como “pass” para release.
+- **Estado**: aceptada.

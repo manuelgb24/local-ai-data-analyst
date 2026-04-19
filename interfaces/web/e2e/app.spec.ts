@@ -68,7 +68,7 @@ test("refreshes history after a persisted dataset error and shows the failed run
   await page.getByLabel("Prompt").fill("Resume los hallazgos principales");
   await page.getByRole("button", { name: "Lanzar run" }).click();
 
-  await expect(page.getByText("dataset", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("persisted-error-category")).toHaveText("dataset");
   await expect(page.getByText("dataset_path_not_found").first()).toBeVisible();
   await expect(page.getByText("Dataset path does not exist").first()).toBeVisible();
   await expect(page.getByRole("button", { name: /run-ui-failed-001/ })).toBeVisible();
