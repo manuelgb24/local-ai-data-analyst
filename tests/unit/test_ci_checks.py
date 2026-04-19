@@ -74,6 +74,7 @@ def test_run_mode_smoke_runs_commands_when_provider_is_ready(monkeypatch: pytest
 
     assert executed == [
         "smoke ollama adapter",
+        "smoke cli status",
         "smoke real cli workflow",
     ]
 

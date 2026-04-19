@@ -65,7 +65,7 @@ export function RunForm({
 
   const submitLabel = useMemo(() => {
     if (submitting) {
-      return "Ejecutando runâ€¦";
+      return "Ejecutando run…";
     }
     return "Lanzar run";
   }, [submitting]);

@@ -7,7 +7,7 @@ Definir cómo se valida el sistema en la nueva fase del producto:
 - sin mezclar pruebas del producto con alcance todavía no aprobado.
 
 ## Principio general
-El MVP ya cuenta con validación del core. La siguiente fase no reemplaza esa cobertura: la **extiende**.
+El MVP ya cuenta con validación del core. La fase producto actual no reemplaza esa cobertura: la **extiende**.
 
 Las capas de validación deben quedar separadas:
 - validación del core;
@@ -266,8 +266,8 @@ Uso esperado:
 
 ---
 
-## Criterio de aceptación de la siguiente fase
-La fase producto se considerará bien encaminada cuando:
+## Criterio de aceptación de la fase producto actual
+La fase producto se considera bien encaminada cuando:
 - el core siga validado;
 - la API local sea comprobable por tests;
 - la UI web sea validable con browser E2E;
@@ -292,6 +292,7 @@ Cobertura directa de cada lane:
   - `npm --prefix interfaces/web run test:e2e`
 - `smoke`:
   - `pytest tests/smoke/test_ollama_adapter.py -q -rs`
+  - `pytest tests/smoke/test_cli_status.py -q -rs`
   - `pytest tests/smoke/test_real_cli_workflow.py -q -rs`
 
 Validaciones complementarias que siguen siendo obligatorias para release:

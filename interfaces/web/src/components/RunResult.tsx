@@ -13,6 +13,16 @@ interface RunResultProps {
   isLoading: boolean;
 }
 
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("es", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function formatTimestamp(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : DATE_TIME_FORMATTER.format(date);
+}
+
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) {
     return "-";
@@ -91,7 +101,7 @@ function ArtifactList({ artifacts }: { artifacts: ArtifactListItem[] }) {
           <div>
             <p className="artifact-name">{artifact.name}</p>
             <p className="muted">
-              {artifact.type} Â· {artifact.size_bytes ?? "?"} bytes
+              {artifact.type} · {artifact.size_bytes ?? "?"} bytes
             </p>
             <code>{artifact.path}</code>
           </div>
@@ -161,7 +171,7 @@ export function RunResult({
             <h2>Run seleccionado</h2>
           </div>
         </div>
-        <p className="muted">Cargando detalle persistido...</p>
+        <p className="muted">Cargando detalle persistido…</p>
       </section>
     );
   }
@@ -216,20 +226,24 @@ export function RunResult({
         <div>
           <dt>Creado</dt>
           <dd>
-            <time dateTime={selectedRunSummary.created_at}>{selectedRunSummary.created_at}</time>
+            <time dateTime={selectedRunSummary.created_at} title={selectedRunSummary.created_at}>
+              {formatTimestamp(selectedRunSummary.created_at)}
+            </time>
           </dd>
         </div>
         <div>
           <dt>Actualizado</dt>
           <dd>
-            <time dateTime={selectedRunSummary.updated_at}>{selectedRunSummary.updated_at}</time>
+            <time dateTime={selectedRunSummary.updated_at} title={selectedRunSummary.updated_at}>
+              {formatTimestamp(selectedRunSummary.updated_at)}
+            </time>
           </dd>
         </div>
       </dl>
 
       {detailError ? <ErrorBanner title="No se pudo cargar el detalle persistido" error={detailError} /> : null}
 
-      {isLoading && !runDetail && !detailError ? <p className="muted">Cargando detalle persistido...</p> : null}
+      {isLoading && !runDetail && !detailError ? <p className="muted">Cargando detalle persistido…</p> : null}
 
       {runDetail?.dataset_profile ? (
         <article className="result-card">

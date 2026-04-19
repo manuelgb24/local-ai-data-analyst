@@ -3,7 +3,7 @@
 ## Propósito del documento
 Este documento fija los contratos funcionales del sistema en su estado actual:
 - contratos del **core MVP ya implementado**;
-- contratos mínimos de la **siguiente fase de producto** para API local y UI.
+- contratos actuales de la **API local** y la **UI web local**.
 
 No pretende diseñar todavía un backend enterprise ni una plataforma multiusuario. Define solo lo necesario para mantener límites claros entre interfaz web, API local, CLI, runtime, capa de datos, agente y adapters.
 
@@ -220,9 +220,9 @@ Dar un formato común a los errores del runtime, datos, adapters y agente.
 
 ---
 
-## 11. Contratos mínimos post-MVP para API local y UI
+## 11. Contratos mínimos post-MVP implementados para API local y UI
 
-Estos contratos todavía no están implementados como superficie pública, pero quedan fijados como dirección de producto.
+Estos contratos son la superficie pública local que consumen la API y la UI en la fase producto actual.
 
 ### 11.1 CreateRunRequest
 
@@ -312,7 +312,7 @@ Exponer el estado operativo interno de la aplicación local antes de que exista 
 - `details?`
 
 #### Regla
-En la Fase 1 debe representar wiring/configuración local válida del producto, no “servidor HTTP levantado”. El futuro `GET /health` debe heredar esta semántica mínima.
+Representa wiring/configuración local válida del producto, no solo “servidor HTTP levantado”. `GET /health` hereda esta semántica mínima.
 
 ### 11.6 ProveedorHealth
 
@@ -351,7 +351,7 @@ Exponer configuración efectiva mínima útil para la UI local.
 No debe exponer todavía secretos ni configuración enterprise.
 
 #### Regla adicional
-La CLI actual (`status` / `config`) puede exponer esta configuración directamente y la futura API local debe heredar el mismo shape mínimo.
+La CLI actual (`status` / `config`) expone esta configuración directamente y la API local mantiene el mismo shape mínimo.
 
 ### 11.8 ApiError
 
@@ -374,9 +374,9 @@ Debe poder mapear errores del core sin perder legibilidad para UI y soporte.
 
 ---
 
-## 12. Persistencia local mínima prevista
+## 12. Persistencia local mínima actual
 
-La siguiente etapa de producto asume una persistencia local mínima de metadata de runs con estas reglas:
+La fase producto actual usa una persistencia local mínima de metadata de runs con estas reglas:
 - debe ser file-backed;
 - debe vivir junto al espacio local de artifacts o en una ubicación equivalente del mismo entorno local;
 - no requiere introducir todavía una base de datos adicional;
@@ -384,7 +384,7 @@ La siguiente etapa de producto asume una persistencia local mínima de metadata 
 
 ---
 
-## 13. Endpoints mínimos documentados para la siguiente fase
+## 13. Endpoints mínimos documentados actuales
 
 ### `POST /runs`
 - Crea un run nuevo.

@@ -10,6 +10,16 @@ interface RunHistoryPanelProps {
   onSelect: (runId: string) => void;
 }
 
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("es", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function formatTimestamp(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : DATE_TIME_FORMATTER.format(date);
+}
+
 function RunHistoryItem({
   run,
   selected,
@@ -46,13 +56,17 @@ function RunHistoryItem({
           <div>
             <dt>Creado</dt>
             <dd>
-              <time dateTime={run.created_at}>{run.created_at}</time>
+              <time dateTime={run.created_at} title={run.created_at}>
+                {formatTimestamp(run.created_at)}
+              </time>
             </dd>
           </div>
           <div>
             <dt>Actualizado</dt>
             <dd>
-              <time dateTime={run.updated_at}>{run.updated_at}</time>
+              <time dateTime={run.updated_at} title={run.updated_at}>
+                {formatTimestamp(run.updated_at)}
+              </time>
             </dd>
           </div>
         </dl>
@@ -79,7 +93,7 @@ export function RunHistoryPanel({
 
       {error ? <ErrorBanner title="No se pudo cargar el historial" error={error} /> : null}
 
-      {!error && isLoading ? <p className="muted">Cargando historial persistido...</p> : null}
+      {!error && isLoading ? <p className="muted">Cargando historial persistido…</p> : null}
 
       {!error && !isLoading && runs.length === 0 ? (
         <p className="muted">Todavia no hay runs persistidos en este entorno local.</p>

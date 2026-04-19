@@ -45,6 +45,7 @@ El núcleo funcional sigue congelado por ahora:
 ## Cómo arrancar el producto local actual
 ### Requisitos
 - Python con dependencias de `requirements.txt`
+- `requirements-dev.txt` para ejecutar validaciones y CI local
 - Node.js + npm para la UI web local
 - Ollama levantado localmente
 - modelo `deepseek-r1:8b` disponible en Ollama
@@ -52,6 +53,11 @@ El núcleo funcional sigue congelado por ahora:
 ### Instalar dependencias Python
 ```bash
 python -m pip install -r requirements.txt
+```
+
+### Instalar dependencias de validación
+```bash
+python -m pip install -r requirements-dev.txt
 ```
 
 ### Verificar Ollama
@@ -136,7 +142,7 @@ Nota operativa:
 - `AGENTS.md` — guardrails del repo y reglas de trabajo.
 - `docs/PROJECT_BRIEF.md` — objetivo y dirección del producto.
 - `docs/ARCHITECTURE.md` — arquitectura actual y evolución prevista.
-- `docs/CONTRACTS.md` — contratos del core y de la futura API local.
+- `docs/CONTRACTS.md` — contratos del core y de la API local actual.
 - `docs/DECISIONS.md` — decisiones de producto y arquitectura.
 - `docs/INSTALLATION.md` — instalación, build y arranque recomendado del producto.
 - `docs/TEST_PLAN.md` — estrategia de validación.
@@ -145,8 +151,8 @@ Nota operativa:
 - `docs/PRODUCT_SCOPE.md` — límites actuales del producto.
 - `.github/workflows/ci.yml` — workflow CI de Fase 7 para lanes `python` y `web`.
 
-## Hacia dónde va ahora
-La siguiente secuencia de trabajo vive en `docs/TASKS.md` y arranca, tras el cierre del MVP, con:
+## Secuencia post-MVP implementada
+La secuencia post-MVP vive en `docs/TASKS.md` como roadmap operativo canónico. Hasta la Fase 7 se ha consolidado:
 - Fase 1 — readiness, configuración y UX operativa local;
 - Fase 2 — API local mínima;
 - Fase 3 — interfaz principal con ruta manual de dataset;

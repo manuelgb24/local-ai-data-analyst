@@ -5,6 +5,7 @@ Dejar una historia reproducible de instalacion, build y arranque local del produ
 
 ## Requisitos
 - Python con soporte para instalar `requirements.txt`.
+- `requirements-dev.txt` para ejecutar validaciones repo-locales y CI local.
 - Node.js + npm para construir la UI web.
 - Ollama instalado y levantado localmente.
 - Modelo `deepseek-r1:8b` disponible en Ollama.
@@ -14,6 +15,12 @@ Dejar una historia reproducible de instalacion, build y arranque local del produ
 ### 1. Instalar dependencias Python
 ```bash
 python -m pip install -r requirements.txt
+```
+
+Para validación y release hardening:
+
+```bash
+python -m pip install -r requirements-dev.txt
 ```
 
 ### 2. Instalar dependencias web

@@ -38,7 +38,7 @@ export function useReadiness(): UseReadinessState {
 
   const blockedReason = useMemo(() => {
     if (isLoading) {
-      return "Cargando estado operativo...";
+      return "Cargando estado operativo…";
     }
     if (error) {
       return "No se pudo cargar el estado operativo de la API local.";

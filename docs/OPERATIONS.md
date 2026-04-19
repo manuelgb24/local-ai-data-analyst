@@ -182,7 +182,7 @@ Por defecto la UI queda disponible en `http://127.0.0.1:4173`.
 - cambiar a un run previo del historial y verificar su detalle persistido aunque el proveedor no esté listo para nuevos submits.
 
 ## Health y readiness esperados
-Aunque la superficie HTTP todavía no esté implementada, el producto debe distinguir entre:
+El producto distingue entre:
 
 ### Health de aplicación
 En la Fase 1 indica si la aplicación local tiene wiring/configuración válidos para operar:
@@ -197,10 +197,10 @@ Indica si:
 - el endpoint local es accesible;
 - el modelo `deepseek-r1:8b` está disponible.
 
-La futura API local deberá exponer ambos chequeos de forma explícita.
+La API local expone ambos chequeos de forma explícita.
 
-## Entrada futura documentada del dataset
-La etapa futura aprobada sigue usando **ruta manual local** como entrada del dataset. Eso mantiene coherencia con el flujo actual del repositorio y con el contrato `dataset_path`.
+## Entrada actual documentada del dataset
+La fase producto actual sigue usando **ruta manual local** como entrada del dataset. Eso mantiene coherencia con el flujo actual del repositorio y con el contrato `dataset_path`.
 
 ## Historial persistente local actual
 La operación local ya puede consultar historial persistente de runs por API y por la UI web:
@@ -231,7 +231,7 @@ python scripts/ci_checks.py smoke
 Semántica operativa:
 - `python` valida core, API y E2E Python rápidos;
 - `web` valida build empaquetada y browser E2E;
-- `smoke` valida integraciones reales con Ollama y la CLI sobre host preparado.
+- `smoke` valida estado operativo real, integraciones reales con Ollama y la CLI sobre host preparado.
 
 La validación manual final del runtime empaquetado se mantiene aparte:
 

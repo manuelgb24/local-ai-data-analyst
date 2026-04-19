@@ -60,7 +60,7 @@ export function ReadinessPanel({
         </button>
       </div>
 
-      {isLoading ? <p className="muted">Cargando readiness...</p> : null}
+      {isLoading ? <p className="muted">Cargando readiness…</p> : null}
       {error ? <ErrorBanner title="No se pudo obtener readiness" error={error} /> : null}
 
       {readiness ? (

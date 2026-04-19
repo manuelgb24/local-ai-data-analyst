@@ -188,7 +188,7 @@ export function App() {
 
   const titleStatus = useMemo(() => {
     if (readinessLoading) {
-      return "Verificando readiness...";
+      return "Verificando readiness…";
     }
     if (canSubmit) {
       return "Producto listo para lanzar un run";
@@ -200,7 +200,7 @@ export function App() {
     <main className="app-shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">3_agents - Fase 4</p>
+          <p className="eyebrow">3_agents · Local-first</p>
           <h1>UI local-first para lanzar y explorar runs persistidos</h1>
           <p className="hero-text">
             Esta interfaz reutiliza la API local existente para lanzar runs, revisar historial

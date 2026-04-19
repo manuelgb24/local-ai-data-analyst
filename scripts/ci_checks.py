@@ -60,6 +60,11 @@ SMOKE_COMMAND_SPECS: tuple[CommandSpec, ...] = (
         fail_on_skip=True,
     ),
     CommandSpec(
+        "smoke cli status",
+        PYTEST_BASE_COMMAND + ("tests/smoke/test_cli_status.py", "-q", "-rs"),
+        fail_on_skip=True,
+    ),
+    CommandSpec(
         "smoke real cli workflow",
         PYTEST_BASE_COMMAND + ("tests/smoke/test_real_cli_workflow.py", "-q", "-rs"),
         fail_on_skip=True,
