@@ -1,0 +1,78 @@
+{
+  "run_id": "run-a619e7e8e8c14f618acb8754f4a98f74",
+  "session_id": "session-cce84d90b7324600ae52189cf4c76830",
+  "request": {
+    "agent_id": "data_analyst",
+    "dataset_path": "DatasetV1\\student_lifestyle_performance_dataset.csv",
+    "user_prompt": "dime cual es la carrera (branch) en la que mas se estudia",
+    "session_id": null
+  },
+  "state": "running_agent",
+  "state_history": [
+    "created",
+    "preparing_dataset",
+    "running_agent"
+  ],
+  "created_at": "2026-04-20T14:35:44.425326+00:00",
+  "updated_at": "2026-04-20T14:35:44.543827+00:00",
+  "dataset_profile": {
+    "source_path": "DatasetV1\\student_lifestyle_performance_dataset.csv",
+    "format": "csv",
+    "table_name": "dataset_run_a619e7e8e8c14f618acb8754f4a98f74",
+    "schema": [
+      {
+        "name": "Age",
+        "type": "BIGINT"
+      },
+      {
+        "name": "Branch",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "Study_Hours_per_Day",
+        "type": "DOUBLE"
+      },
+      {
+        "name": "Sleep_Hours",
+        "type": "DOUBLE"
+      },
+      {
+        "name": "Screen_Time_Hours",
+        "type": "DOUBLE"
+      },
+      {
+        "name": "Gym_Hours_per_Week",
+        "type": "DOUBLE"
+      },
+      {
+        "name": "Diet_Type",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "Attendance_Percentage",
+        "type": "DOUBLE"
+      },
+      {
+        "name": "Stress_Level_1_to_10",
+        "type": "DOUBLE"
+      },
+      {
+        "name": "Residence",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "Internal_Marks",
+        "type": "DOUBLE"
+      },
+      {
+        "name": "CGPA",
+        "type": "DOUBLE"
+      }
+    ],
+    "row_count": 1000,
+    "nulls": null,
+    "sample": null
+  },
+  "result": null,
+  "error": null
+}

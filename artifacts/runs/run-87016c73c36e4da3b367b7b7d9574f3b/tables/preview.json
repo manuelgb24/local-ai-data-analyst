@@ -1,0 +1,52 @@
+[
+  {
+    "Store": 1,
+    "Date": "2010-02-05",
+    "Weekly_Sales": 1643690.9,
+    "Holiday_Flag": 0,
+    "Temperature": 42.31,
+    "Fuel_Price": 2.572,
+    "CPI": 211.0963582,
+    "Unemployment": 8.106
+  },
+  {
+    "Store": 1,
+    "Date": "2010-02-12",
+    "Weekly_Sales": 1641957.44,
+    "Holiday_Flag": 1,
+    "Temperature": 38.51,
+    "Fuel_Price": 2.548,
+    "CPI": 211.2421698,
+    "Unemployment": 8.106
+  },
+  {
+    "Store": 1,
+    "Date": "2010-02-19",
+    "Weekly_Sales": 1611968.17,
+    "Holiday_Flag": 0,
+    "Temperature": 39.93,
+    "Fuel_Price": 2.514,
+    "CPI": 211.2891429,
+    "Unemployment": 8.106
+  },
+  {
+    "Store": 1,
+    "Date": "2010-02-26",
+    "Weekly_Sales": 1409727.59,
+    "Holiday_Flag": 0,
+    "Temperature": 46.63,
+    "Fuel_Price": 2.561,
+    "CPI": 211.3196429,
+    "Unemployment": 8.106
+  },
+  {
+    "Store": 1,
+    "Date": "2010-03-05",
+    "Weekly_Sales": 1554806.68,
+    "Holiday_Flag": 0,
+    "Temperature": 46.5,
+    "Fuel_Price": 2.625,
+    "CPI": 211.3501429,
+    "Unemployment": 8.106
+  }
+]
