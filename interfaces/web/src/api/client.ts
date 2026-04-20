@@ -2,11 +2,15 @@ import type {
   ApiError,
   ApplicationHealth,
   ArtifactListItem,
+  ChatDetail,
+  ChatSummary,
+  CreateChatRequest,
   CreateRunRequest,
   ProveedorHealth,
   ReadinessState,
   RunDetail,
   RunSummary,
+  SendChatMessageRequest,
 } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "/api" : "");
@@ -130,5 +134,30 @@ export async function fetchRunDetail(runId: string): Promise<RunDetail> {
 
 export async function fetchRunArtifacts(runId: string): Promise<ArtifactListItem[]> {
   return requestJson<ArtifactListItem[]>(`/runs/${encodeURIComponent(runId)}/artifacts`);
+}
+
+export async function createChat(payload: CreateChatRequest): Promise<ChatDetail> {
+  return requestJson<ChatDetail>("/chats", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchChats(): Promise<ChatSummary[]> {
+  return requestJson<ChatSummary[]>("/chats");
+}
+
+export async function fetchChatDetail(chatId: string): Promise<ChatDetail> {
+  return requestJson<ChatDetail>(`/chats/${encodeURIComponent(chatId)}`);
+}
+
+export async function sendChatMessage(
+  chatId: string,
+  payload: SendChatMessageRequest,
+): Promise<ChatDetail> {
+  return requestJson<ChatDetail>(`/chats/${encodeURIComponent(chatId)}/messages`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 

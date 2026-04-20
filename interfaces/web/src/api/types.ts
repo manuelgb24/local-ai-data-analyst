@@ -33,6 +33,18 @@ export interface CreateRunRequest {
   agent_id: string;
   dataset_path: string;
   user_prompt: string;
+  session_id?: string | null;
+  conversation_context?: Array<{ role: "user" | "assistant"; content: string }> | null;
+}
+
+export interface CreateChatRequest {
+  agent_id: string;
+  dataset_path: string;
+  user_prompt: string;
+}
+
+export interface SendChatMessageRequest {
+  user_prompt: string;
 }
 
 export interface RunSummary {
@@ -75,6 +87,11 @@ export interface TableResult {
 export interface ChartReference {
   name: string;
   path?: string | null;
+  chart_type?: "bar" | string;
+  title?: string | null;
+  x_key?: string | null;
+  y_key?: string | null;
+  data?: Array<Record<string, unknown>>;
 }
 
 export interface ArtifactManifest {
@@ -118,6 +135,45 @@ export interface ArtifactListItem {
   path: string;
   run_id: string;
   size_bytes?: number | null;
+}
+
+export interface ChatMessage {
+  message_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+  run_id?: string | null;
+  status?: string | null;
+  result?: AgentResult | null;
+  error?: {
+    code: string;
+    message: string;
+    stage: string;
+    details?: Record<string, unknown> | null;
+  } | null;
+}
+
+export interface ChatSummary {
+  chat_id: string;
+  agent_id: string;
+  dataset_path: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  latest_run_id?: string | null;
+  message_count: number;
+}
+
+export interface ChatDetail {
+  chat_id: string;
+  agent_id: string;
+  dataset_path: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  messages: ChatMessage[];
+  run_ids: string[];
+  latest_run_id?: string | null;
 }
 
 export interface ReadinessState {

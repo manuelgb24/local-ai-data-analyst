@@ -12,13 +12,15 @@ Fijar qué entra y qué no entra en la fase actual del producto para evitar que 
 - DuckDB local;
 - Ollama local;
 - artifacts trazables por run.
+- chats locales persistentes como agrupación de runs del mismo dataset/agente.
 
 ### Superficie de producto prevista
 - interfaz web principal;
 - API local;
 - CLI operativa;
 - health/readiness operativos;
-- historial persistente local de runs y artifacts;
+- historial persistente local de runs, chats y artifacts;
+- gráficos embebidos y tablas visuales generadas desde resultados determinísticos;
 - observabilidad mínima;
 - packaging y release hardening.
 
@@ -40,7 +42,9 @@ Fijar qué entra y qué no entra en la fase actual del producto para evitar que 
 - health y readiness;
 - trazabilidad;
 - observabilidad;
-- historial persistente local;
+- historial persistente local de runs/chats;
+- herramientas analíticas determinísticas acotadas dentro de `data_analyst`;
+- visualización clara de resultados sin exponer JSON/rutas como contenido principal;
 - forma de distribución local;
 - validación automatizada;
 - calidad de la UI y de la API local.

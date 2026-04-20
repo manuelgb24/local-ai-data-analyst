@@ -14,16 +14,21 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from application import (
+    ChatNotFoundError,
+    CreateChatUseCase,
     ErrorStage,
+    GetChatUseCase,
     GetRunUseCase,
+    ListChatsUseCase,
     ListRunArtifactsUseCase,
     ListRunsUseCase,
     RunAnalysisUseCase,
     RunError,
     RunNotFoundError,
     RunRequest,
+    SendChatMessageUseCase,
 )
-from artifacts import FilesystemRunMetadataStore
+from artifacts import FilesystemChatStore, FilesystemRunMetadataStore
 from data import LocalDatasetPreparer
 from observability import (
     ERROR_CATEGORY_CORE,
@@ -40,7 +45,7 @@ from observability import (
 )
 from runtime import InMemoryRunTracker, RuntimeCoordinator, build_default_agent_registry
 
-from .models import CreateRunRequestPayload
+from .models import CreateChatRequestPayload, CreateRunRequestPayload, SendChatMessageRequestPayload
 from .serializers import build_api_error, serialize_response
 
 DEFAULT_API_HOST = "127.0.0.1"
@@ -55,6 +60,12 @@ def build_default_run_metadata_store(
     artifacts_root: str | Path = DEFAULT_ARTIFACTS_ROOT,
 ) -> FilesystemRunMetadataStore:
     return FilesystemRunMetadataStore(artifacts_root=artifacts_root)
+
+
+def build_default_chat_store(
+    artifacts_root: str | Path = DEFAULT_ARTIFACTS_ROOT,
+) -> FilesystemChatStore:
+    return FilesystemChatStore(artifacts_root=artifacts_root)
 
 
 def build_default_runtime_coordinator(
@@ -77,11 +88,13 @@ def create_app(
     runtime_coordinator: RuntimeCoordinator | None = None,
     operational_readiness_service: OperationalReadinessService | None = None,
     run_metadata_store: FilesystemRunMetadataStore | None = None,
+    chat_store: FilesystemChatStore | None = None,
     serve_web: bool = False,
     web_dist: str | Path | None = None,
 ) -> FastAPI:
     configure_structured_logging()
     store = run_metadata_store or build_default_run_metadata_store(artifacts_root=artifacts_root)
+    chats = chat_store or build_default_chat_store(artifacts_root=artifacts_root)
     coordinator = runtime_coordinator or build_default_runtime_coordinator(
         artifacts_root=artifacts_root,
         run_metadata_store=store,
@@ -94,6 +107,15 @@ def create_app(
     list_runs_use_case = ListRunsUseCase(store)
     get_run_use_case = GetRunUseCase(store)
     list_artifacts_use_case = ListRunArtifactsUseCase(store)
+    send_chat_message_use_case = SendChatMessageUseCase(
+        store=chats,
+        run_use_case=run_use_case,
+        get_run_use_case=get_run_use_case,
+        run_history_reader=store,
+    )
+    create_chat_use_case = CreateChatUseCase(chats, send_chat_message_use_case)
+    list_chats_use_case = ListChatsUseCase(chats)
+    get_chat_use_case = GetChatUseCase(chats)
 
     app = FastAPI(
         title="3_agents local API",
@@ -209,6 +231,32 @@ def create_app(
             ),
         )
 
+    @app.exception_handler(ChatNotFoundError)
+    async def handle_chat_not_found(request: Request, exc: ChatNotFoundError) -> JSONResponse:
+        trace_id = _trace_id(request)
+        log_event(
+            _LOGGER,
+            "request_failed",
+            level=40,
+            code="chat_not_found",
+            category=ERROR_CATEGORY_REQUEST,
+            status_code=404,
+        )
+        return JSONResponse(
+            status_code=404,
+            headers={"X-Trace-Id": trace_id},
+            content=build_api_error(
+                code="chat_not_found",
+                message=f"Chat not found: {exc.chat_id}",
+                status=404,
+                details=build_api_error_details(
+                    category=ERROR_CATEGORY_REQUEST,
+                    chat_id=exc.chat_id,
+                ),
+                trace_id=trace_id,
+            ),
+        )
+
     @app.exception_handler(Exception)
     async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
         trace_id = _trace_id(request)
@@ -254,6 +302,35 @@ def create_app(
     @app.get("/runs/{run_id}/artifacts")
     def get_run_artifacts(run_id: str) -> JSONResponse:
         return JSONResponse(status_code=200, content=serialize_response(list_artifacts_use_case.execute(run_id)))
+
+    @app.post("/chats")
+    def create_chat(payload: CreateChatRequestPayload) -> JSONResponse:
+        request = _build_run_request(
+            CreateRunRequestPayload(
+                agent_id=payload.agent_id,
+                dataset_path=payload.dataset_path,
+                user_prompt=payload.user_prompt,
+            )
+        )
+        detail = create_chat_use_case.execute(
+            agent_id=request.agent_id,
+            dataset_path=request.dataset_path,
+            user_prompt=request.user_prompt,
+        )
+        return JSONResponse(status_code=200, content=serialize_response(detail))
+
+    @app.get("/chats")
+    def list_chats() -> JSONResponse:
+        return JSONResponse(status_code=200, content=serialize_response(list_chats_use_case.execute()))
+
+    @app.get("/chats/{chat_id}")
+    def get_chat(chat_id: str) -> JSONResponse:
+        return JSONResponse(status_code=200, content=serialize_response(get_chat_use_case.execute(chat_id)))
+
+    @app.post("/chats/{chat_id}/messages")
+    def send_chat_message(chat_id: str, payload: SendChatMessageRequestPayload) -> JSONResponse:
+        detail = send_chat_message_use_case.execute(chat_id, payload.user_prompt)
+        return JSONResponse(status_code=200, content=serialize_response(detail))
 
     @app.get("/health")
     def get_health() -> JSONResponse:

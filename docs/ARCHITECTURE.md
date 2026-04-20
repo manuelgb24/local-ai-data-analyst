@@ -18,14 +18,15 @@ La UI y la API se apoyan en el mismo core existente. No deben reimplementar:
 
 ### 1. `interfaces/web`
 - Superficie principal del producto.
-- Permite lanzar runs, revisar resultados, consultar runs persistidos, consultar artifacts y ver estado operativo.
+- Permite crear chats analíticos locales por dataset, revisar resultados, hacer preguntas de seguimiento, consultar historial persistido y ver estado operativo.
 - No implementa lógica analítica.
 - Consume la API local del mismo repositorio.
 - La entrada documentada del dataset en esta fase se hace por ruta manual local.
+- Trata `run_id`, rutas de artifacts y trazas SQL como detalles técnicos colapsables, no como contenido principal.
 
 ### 2. `interfaces/api`
 - Expone contratos locales para el producto.
-- Publica endpoints mínimos de ejecución, listado de runs, consulta de runs, artifacts y health.
+- Publica endpoints mínimos de chats, ejecución, listado de runs, consulta de runs, artifacts y health.
 - Traduce peticiones externas al caso de uso del sistema.
 - Recibe la ruta manual local al dataset y construye el `RunRequest` interno.
 - En Fase 6 puede servir además la UI build en modo monoproceso para reducir fricción de arranque local.
@@ -40,6 +41,7 @@ La UI y la API se apoyan en el mismo core existente. No deben reimplementar:
 - Contiene los casos de uso del sistema.
 - Es la frontera estable entre interfaces y core de ejecución.
 - Debe seguir siendo reutilizable por CLI, API y futuras interfaces.
+- Mantiene la capa local de chat como agrupación de runs por `session_id`.
 
 ### 5. `runtime`
 - Coordina la ejecución del run.
@@ -52,7 +54,9 @@ La UI y la API se apoyan en el mismo core existente. No deben reimplementar:
 ### 6. `agents/data_analyst`
 - Único agente real del sistema en esta fase.
 - Analiza el dataset ya preparado.
-- Produce una salida estructurada y trazable.
+- Produce una salida estructurada, trazable y visualizable.
+- Puede usar herramientas DuckDB determinísticas acotadas para rankings, agregaciones por grupo y correlaciones simples.
+- No ejecuta SQL libre generado por el LLM.
 
 ### 7. `data`
 - Valida ruta y formato.
@@ -64,7 +68,7 @@ La UI y la API se apoyan en el mismo core existente. No deben reimplementar:
 - Persiste la respuesta y outputs del run.
 - Mantiene el manifiesto de artifacts.
 - Debe poder servir tanto a CLI como a API/UI.
-- Comparte espacio conceptual con la persistencia local mínima de metadata de runs.
+- Comparte espacio conceptual con la persistencia local mínima de metadata de runs y chats.
 
 ### 9. `adapters`
 - Aíslan integraciones con DuckDB, Ollama y filesystem.
@@ -80,23 +84,23 @@ La UI y la API se apoyan en el mismo core existente. No deben reimplementar:
 ## Flujos principales
 
 ### Flujo principal del producto
-1. La UI local llama a la API local.
-2. La API recibe `agent_id`, `dataset_path`, `user_prompt` y `session_id?`.
-3. `application` invoca el caso de uso principal.
-4. `runtime` valida, crea sesión/run y coordina el flujo.
+1. La UI local crea o selecciona un chat.
+2. La API recibe `agent_id`, `dataset_path` y `user_prompt` al crear chat, o solo `user_prompt` en un seguimiento.
+3. `application` fija el chat a un único dataset/agente y lanza un run con `session_id = chat_id`.
+4. `runtime` valida, crea run y coordina el flujo.
 5. `data` carga y perfila el dataset.
 6. `runtime` construye el contexto del agente.
-7. `data_analyst` analiza el dataset usando DuckDB y Ollama.
+7. `data_analyst` analiza el dataset usando DuckDB, herramientas determinísticas acotadas y Ollama.
 8. `artifacts` persiste la respuesta y outputs.
-9. La persistencia local de metadata permite listar y consultar runs posteriores.
-10. La API devuelve estado, resumen y referencias.
-11. La UI renderiza narrativa, artifacts y estado operativo.
+9. La persistencia local de metadata permite listar y consultar runs y chats posteriores.
+10. La API devuelve `ChatDetail` con mensajes, resultados y referencias técnicas.
+11. La UI renderiza conversación, narrativa, gráficos embebidos y detalles técnicos colapsados.
 
 ### Flujo repo-local empaquetado
 1. Se construye `interfaces/web/dist`.
 2. `python -m interfaces.api --serve-web` levanta un único proceso local.
 3. Ese proceso sirve la UI build en `/` y mantiene la API local en el mismo origen.
-4. La UI empaquetada consume `/health`, `/health/proveedor` y `/runs*` sin proxy de desarrollo.
+4. La UI empaquetada consume `/health`, `/health/proveedor`, `/chats*` y `/runs*` sin proxy de desarrollo.
 
 ### Flujo operativo por CLI
 1. La CLI puede exponer `status`, `config` y `run`.
@@ -136,6 +140,13 @@ El `runtime` **no**:
 - incorpora lógica de UI;
 - expone HTTP directamente.
 
+## Papel de los chats locales
+Los chats son una capa de producto local sobre runs persistidos:
+- agrupan varios runs mediante `session_id = chat_id`;
+- guardan una memoria corta de mensajes para dar continuidad a preguntas de seguimiento;
+- no cambian el agente ni el dataset dentro del chat;
+- no son Planner, routing automático, RAG ni multi-agent.
+
 ## Papel del Agent Registry
 El `Agent Registry` sigue siendo ligero:
 - acepta `agent_id`;
@@ -172,9 +183,9 @@ Sin reabrir la arquitectura del core, la dirección documental del repositorio p
 
 ## Evolución permitida a continuación
 Sin comprometer el core actual, esta arquitectura permite:
-- añadir UI web local;
-- añadir API local estable;
-- añadir historial persistente local de runs;
+- mejorar UI web local;
+- extender API local estable;
+- añadir historial persistente local de runs y chats;
 - mejorar observabilidad y health/readiness;
 - preparar packaging y distribución local;
 - reforzar CI y release.

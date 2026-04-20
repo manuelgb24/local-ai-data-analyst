@@ -46,6 +46,7 @@ def deserialize_run_record(payload: dict[str, Any]) -> RunRecord:
         dataset_path=request_payload["dataset_path"],
         user_prompt=request_payload["user_prompt"],
         session_id=request_payload.get("session_id"),
+        conversation_context=list(request_payload.get("conversation_context", [])),
     )
 
     dataset_profile_payload = payload.get("dataset_profile")
@@ -119,6 +120,11 @@ def _deserialize_chart_reference(payload: dict[str, Any]) -> ChartReference:
     return ChartReference(
         name=str(payload["name"]),
         path=None if payload.get("path") is None else str(payload["path"]),
+        chart_type=str(payload.get("chart_type", "bar")),
+        title=None if payload.get("title") is None else str(payload["title"]),
+        x_key=None if payload.get("x_key") is None else str(payload["x_key"]),
+        y_key=None if payload.get("y_key") is None else str(payload["y_key"]),
+        data=list(payload.get("data", [])),
     )
 
 
@@ -138,3 +144,11 @@ def _deserialize_run_error(payload: dict[str, Any]) -> RunError:
         stage=str(payload["stage"]),
         details=None if payload.get("details") is None else dict(payload["details"]),
     )
+
+
+def deserialize_agent_result(payload: dict[str, Any]) -> AgentResult:
+    return _deserialize_agent_result(payload)
+
+
+def deserialize_run_error(payload: dict[str, Any]) -> RunError:
+    return _deserialize_run_error(payload)

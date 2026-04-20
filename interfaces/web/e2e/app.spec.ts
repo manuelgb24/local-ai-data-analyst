@@ -12,66 +12,41 @@ test.beforeEach(async ({ request }) => {
   await setScenario(request, "ready");
 });
 
-test("shows persisted history on load and selects the latest run", async ({ page }) => {
+test("creates a dataset chat and renders an embedded chart instead of raw artifact paths", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Runs persistidos", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: /run-ui-latest/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /run-ui-failed-history/ })).toBeVisible();
-  await expect(page.getByText("Narrativa UI para: Revisa el run persistido mas reciente")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Lanzar run" })).toBeEnabled();
+  await expect(page.getByRole("heading", { name: "Chats analíticos locales", exact: true })).toBeVisible();
+  await page.getByLabel("Ruta local del dataset").fill("DatasetV1/student_lifestyle_performance_dataset.csv");
+  await page
+    .getByLabel("Pregunta inicial")
+    .fill("dime cual es la carrera (branch) en la que mas se estudia");
+  await page.getByRole("button", { name: "Crear chat" }).click();
+
+  await expect(page.getByText("Civil lidera por horas de estudio")).toBeVisible();
+  await expect(page.getByTestId("chart-ranking_Branch_by_Study_Hours_per_Day")).toBeVisible();
+  await expect(page.getByText("Exportaciones técnicas")).toBeVisible();
+  await expect(page.getByText("artifacts/runs/chat-created-001/response.md")).toBeHidden();
 });
 
-test("allows selecting a previous failed run from persisted history", async ({ page }) => {
+test("continues the selected chat with conversational memory", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: /run-ui-failed-history/ }).click();
+  await page.getByRole("button", { name: /Students lifestyle/ }).click();
+  await expect(page.getByText("Civil lidera por horas de estudio")).toBeVisible();
 
-  await expect(page.getByText("Error persistido")).toBeVisible();
-  await expect(page.getByText("dataset_path_not_found")).toBeVisible();
-  await expect(page.getByText("dataset_preparation")).toBeVisible();
-  await expect(page.getByText("dataset", { exact: true })).toBeVisible();
+  await page.getByLabel("Nueva pregunta").fill("y comparalo con la segunda carrera");
+  await page.getByRole("button", { name: "Enviar" }).click();
+
+  await expect(page.getByText("Comparado con ECE")).toBeVisible();
+  await expect(page.getByTestId("chat-memory-note")).toContainText("Mismo dataset");
 });
 
-test("blocks submit when the provider is not ready but keeps history browseable", async ({ page, request }) => {
+test("keeps chats browseable when provider is down and blocks new submissions", async ({ page, request }) => {
   await setScenario(request, "provider_down");
   await page.goto("/");
 
-  await expect(page.locator(".submit-help")).toContainText("El proveedor local no esta listo.");
-  await expect(page.getByRole("button", { name: "Lanzar run" })).toBeDisabled();
   await expect(page.getByText("Ollama no responde en 127.0.0.1:11434.")).toBeVisible();
-  await expect(page.getByRole("button", { name: /run-ui-latest/ })).toBeVisible();
-
-  await page.getByRole("button", { name: /run-ui-failed-history/ }).click();
-  await expect(page.getByText("Error persistido")).toBeVisible();
-});
-
-test("submits a valid run, refreshes history, and selects the new persisted run", async ({ page }) => {
-  await page.goto("/");
-
-  await page.getByLabel("Ruta local del dataset").fill("DatasetV1/Walmart_Sales.csv");
-  await page.getByLabel("Prompt").fill("Resume los hallazgos principales");
-  await page.getByRole("button", { name: "Lanzar run" }).click();
-
-  await expect(page.getByRole("button", { name: /run-ui-created-001/ })).toBeVisible();
-  await expect(page.getByText("Narrativa UI para: Resume los hallazgos principales")).toBeVisible();
-  await expect(page.getByText("Las ventas tienen un pico claro en el primer bloque analizado.")).toBeVisible();
-  await expect(page.getByRole("cell", { name: "240.5" })).toBeVisible();
-  await expect(page.locator(".artifact-name", { hasText: "response.md" })).toBeVisible();
-  await expect(page.locator(".artifact-name", { hasText: "preview.json" })).toBeVisible();
-});
-
-test("refreshes history after a persisted dataset error and shows the failed run", async ({ page }) => {
-  await page.goto("/");
-
-  await page.getByLabel("Ruta local del dataset").fill("DatasetV1/missing.csv");
-  await page.getByLabel("Prompt").fill("Resume los hallazgos principales");
-  await page.getByRole("button", { name: "Lanzar run" }).click();
-
-  await expect(page.getByTestId("persisted-error-category")).toHaveText("dataset");
-  await expect(page.getByText("dataset_path_not_found").first()).toBeVisible();
-  await expect(page.getByText("Dataset path does not exist").first()).toBeVisible();
-  await expect(page.getByRole("button", { name: /run-ui-failed-001/ })).toBeVisible();
-  await expect(page.locator(".run-history-button-active")).toContainText("run-ui-failed-001");
-  await expect(page.getByText("Error persistido")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Crear chat" })).toBeDisabled();
+  await page.getByRole("button", { name: /Students lifestyle/ }).click();
+  await expect(page.getByText("Civil lidera por horas de estudio")).toBeVisible();
 });

@@ -1,6 +1,15 @@
 """Application layer public exports for the MVP."""
 
-from .api_contracts import ArtifactListItem, RunDetail, RunNotFoundError, RunSummary
+from .api_contracts import (
+    ArtifactListItem,
+    ChatDetail,
+    ChatMessage,
+    ChatNotFoundError,
+    ChatSummary,
+    RunDetail,
+    RunNotFoundError,
+    RunSummary,
+)
 from .contracts import (
     AgentExecutionContext,
     AgentResult,
@@ -43,6 +52,22 @@ def __getattr__(name: str):
         from .run_history import ListRunsUseCase
 
         return ListRunsUseCase
+    if name == "CreateChatUseCase":
+        from .chat_history import CreateChatUseCase
+
+        return CreateChatUseCase
+    if name == "GetChatUseCase":
+        from .chat_history import GetChatUseCase
+
+        return GetChatUseCase
+    if name == "ListChatsUseCase":
+        from .chat_history import ListChatsUseCase
+
+        return ListChatsUseCase
+    if name == "SendChatMessageUseCase":
+        from .chat_history import SendChatMessageUseCase
+
+        return SendChatMessageUseCase
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
@@ -50,13 +75,20 @@ __all__ = [
     "AgentResult",
     "ArtifactListItem",
     "ArtifactManifest",
+    "ChatDetail",
+    "ChatMessage",
+    "ChatNotFoundError",
+    "ChatSummary",
     "ChartReference",
+    "CreateChatUseCase",
     "DatasetColumn",
     "DatasetProfile",
     "ErrorStage",
     "GetAppConfigUseCase",
     "GetOperationalStatusUseCase",
     "GetRunUseCase",
+    "GetChatUseCase",
+    "ListChatsUseCase",
     "ListRunArtifactsUseCase",
     "ListRunsUseCase",
     "RunDetail",
@@ -69,4 +101,5 @@ __all__ = [
     "SqlTraceStatus",
     "TableResult",
     "RunAnalysisUseCase",
+    "SendChatMessageUseCase",
 ]

@@ -33,6 +33,35 @@ class FakeDuckDBContext:
         return self.results[sql]
 
 
+class PatternDuckDBContext:
+    def __init__(self) -> None:
+        self.statements: list[str] = []
+
+    def fetchall(self, sql: str) -> list[tuple[object, ...]]:
+        self.statements.append(sql)
+        if "GROUP BY" in sql and '"Branch"' in sql and '"Study_Hours_per_Day"' in sql:
+            return [
+                ("Civil", 177, 753.48, 4.26),
+                ("ECE", 161, 655.46, 4.07),
+            ]
+        if "CORR" in sql and '"Sleep_Hours"' in sql and '"Gym_Hours_per_Week"' in sql:
+            return [(0.0147, 6.53, 7.31)]
+        if "COUNT(*) AS row_count" in sql and "GROUP BY" in sql:
+            return [("Civil", 177), ("IT", 176)]
+        if "AVG(CAST" in sql:
+            return [
+                ("Study_Hours_per_Day", 1000, 4.04, 0.5, 8.05),
+                ("Sleep_Hours", 1000, 6.53, 3.0, 10.0),
+                ("Gym_Hours_per_Week", 1000, 7.31, 0.0, 20.0),
+            ]
+        if sql.startswith('SELECT * FROM "dataset_run_123"'):
+            return [
+                (23, "ECE", 4.14, 6.84, 2.67),
+                (20, "Civil", 5.97, 5.52, 15.61),
+            ]
+        raise AssertionError(f"unexpected sql: {sql}")
+
+
 def build_request() -> RunRequest:
     return RunRequest(
         agent_id="data_analyst",
@@ -139,6 +168,109 @@ def test_data_analyst_agent_builds_result_with_preview_and_numeric_summary() -> 
     assert result.artifact_manifest.run_id == "run-123"
     assert result.artifact_manifest.table_paths == []
     assert llm.prompts and "Resume los hallazgos principales" in llm.prompts[0]
+
+
+def test_data_analyst_agent_builds_grouped_study_ranking_and_embedded_chart() -> None:
+    llm = FakeLLMAdapter(response="El patrón confirma que Civil lidera.")
+    agent = DataAnalystAgent(llm_adapter=llm)
+    context = build_context(
+        duckdb_context=PatternDuckDBContext(),
+        schema=[
+            DatasetColumn(name="Age", type="BIGINT"),
+            DatasetColumn(name="Branch", type="VARCHAR"),
+            DatasetColumn(name="Study_Hours_per_Day", type="DOUBLE"),
+            DatasetColumn(name="Sleep_Hours", type="DOUBLE"),
+            DatasetColumn(name="Gym_Hours_per_Week", type="DOUBLE"),
+        ],
+    )
+    request = RunRequest(
+        agent_id="data_analyst",
+        dataset_path="DatasetV1/student_lifestyle_performance_dataset.csv",
+        user_prompt="dime cual es la carrera (branch) en la que mas se estudia",
+        session_id="chat-123",
+        conversation_context=[{"role": "user", "content": "Estamos analizando el dataset de estudiantes."}],
+    )
+
+    result = agent(request, context)
+
+    ranking = next(table for table in result.tables if table.name == "ranking_Branch_by_Study_Hours_per_Day")
+    assert ranking.rows[0] == {
+        "Branch": "Civil",
+        "row_count": 177,
+        "total_Study_Hours_per_Day": 753.48,
+        "avg_Study_Hours_per_Day": 4.26,
+        "rank": 1,
+    }
+    assert result.charts
+    assert result.charts[0].chart_type == "bar"
+    assert result.charts[0].x_key == "Branch"
+    assert result.charts[0].y_key == "avg_Study_Hours_per_Day"
+    assert result.charts[0].data[0]["Branch"] == "Civil"
+    assert any("Civil" in finding and "Study_Hours_per_Day" in finding for finding in result.findings)
+    assert result.narrative.startswith("Conclusión:")
+    assert "Civil" in result.narrative
+    assert '"conversation_context"' in llm.prompts[0]
+
+
+def test_data_analyst_agent_builds_correlation_for_two_numeric_columns() -> None:
+    llm = FakeLLMAdapter(response="La relación es prácticamente nula.")
+    agent = DataAnalystAgent(llm_adapter=llm)
+    context = build_context(
+        duckdb_context=PatternDuckDBContext(),
+        schema=[
+            DatasetColumn(name="Age", type="BIGINT"),
+            DatasetColumn(name="Branch", type="VARCHAR"),
+            DatasetColumn(name="Study_Hours_per_Day", type="DOUBLE"),
+            DatasetColumn(name="Sleep_Hours", type="DOUBLE"),
+            DatasetColumn(name="Gym_Hours_per_Week", type="DOUBLE"),
+        ],
+    )
+    request = RunRequest(
+        agent_id="data_analyst",
+        dataset_path="DatasetV1/student_lifestyle_performance_dataset.csv",
+        user_prompt="los alumnos que mas duermen son los que mas horas van al gym?",
+    )
+
+    result = agent(request, context)
+
+    correlation = next(table for table in result.tables if table.name == "correlation_Sleep_Hours_Gym_Hours_per_Week")
+    assert correlation.rows == [
+        {
+            "left_column": "Sleep_Hours",
+            "right_column": "Gym_Hours_per_Week",
+            "correlation": 0.0147,
+            "avg_Sleep_Hours": 6.53,
+            "avg_Gym_Hours_per_Week": 7.31,
+        }
+    ]
+    assert any("correlación" in finding.lower() and "0.0147" in finding for finding in result.findings)
+
+
+def test_data_analyst_agent_builds_category_counts_when_only_dimension_is_requested() -> None:
+    llm = FakeLLMAdapter(response="Civil es la categoría con más alumnos.")
+    agent = DataAnalystAgent(llm_adapter=llm)
+    context = build_context(
+        duckdb_context=PatternDuckDBContext(),
+        schema=[
+            DatasetColumn(name="Branch", type="VARCHAR"),
+            DatasetColumn(name="Study_Hours_per_Day", type="DOUBLE"),
+        ],
+    )
+    request = RunRequest(
+        agent_id="data_analyst",
+        dataset_path="DatasetV1/student_lifestyle_performance_dataset.csv",
+        user_prompt="cuantos alumnos hay por carrera branch?",
+    )
+
+    result = agent(request, context)
+
+    counts = next(table for table in result.tables if table.name == "top_Branch_counts")
+    assert counts.rows == [
+        {"Branch": "Civil", "row_count": 177, "rank": 1},
+        {"Branch": "IT", "row_count": 176, "rank": 2},
+    ]
+    assert result.charts[0].name == "top_Branch_counts"
+    assert result.charts[0].y_key == "row_count"
 
 
 def test_data_analyst_agent_handles_datasets_without_numeric_columns() -> None:

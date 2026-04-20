@@ -173,6 +173,135 @@ def test_post_runs_executes_core_and_persists_detail(repo_tmp_path: Path) -> Non
     assert run_succeeded["run_id"] == run_id
 
 
+def test_chat_endpoints_create_persist_and_continue_session(repo_tmp_path: Path) -> None:
+    artifacts_root = repo_tmp_path / "artifacts"
+    store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)
+    captured_requests: list[RunRequest] = []
+
+    def fake_agent_executor(request: RunRequest, context: AgentExecutionContext) -> AgentResult:
+        captured_requests.append(request)
+        return AgentResult(
+            narrative=f"Respuesta para {request.user_prompt}",
+            findings=["Hallazgo conversacional"],
+            sql_trace=[],
+            tables=[TableResult(name="ranking_Branch_by_Study_Hours_per_Day", rows=[{"Branch": "Civil", "avg": 4.26}])],
+            charts=[],
+            artifact_manifest=ArtifactManifest(run_id=context.run_id),
+        )
+
+    client = TestClient(
+        create_app(
+            artifacts_root=artifacts_root,
+            runtime_coordinator=build_runtime(
+                artifacts_root=artifacts_root,
+                store=store,
+                agent_executor=fake_agent_executor,
+            ),
+            operational_readiness_service=StubReadinessService(artifacts_root),
+            run_metadata_store=store,
+        )
+    )
+
+    create_response = client.post(
+        "/chats",
+        json={
+            "agent_id": "data_analyst",
+            "dataset_path": "DatasetV1/student_lifestyle_performance_dataset.csv",
+            "user_prompt": "dime cual es la carrera en la que mas se estudia",
+        },
+    )
+
+    assert create_response.status_code == 200
+    chat = create_response.json()
+    chat_id = chat["chat_id"]
+    assert chat["dataset_path"] == "DatasetV1/student_lifestyle_performance_dataset.csv"
+    assert chat["messages"][0]["role"] == "user"
+    assert chat["messages"][1]["role"] == "assistant"
+    assert chat["messages"][1]["result"]["narrative"].startswith("Respuesta para")
+    assert chat["run_ids"] == [chat["messages"][1]["run_id"]]
+    assert captured_requests[0].session_id == chat_id
+    assert captured_requests[0].conversation_context == []
+
+    follow_up_response = client.post(
+        f"/chats/{chat_id}/messages",
+        json={"user_prompt": "y comparalo con la segunda carrera"},
+    )
+
+    assert follow_up_response.status_code == 200
+    continued = follow_up_response.json()
+    assert continued["chat_id"] == chat_id
+    assert len(continued["messages"]) == 4
+    assert continued["messages"][-2]["content"] == "y comparalo con la segunda carrera"
+    assert continued["messages"][-1]["role"] == "assistant"
+    assert len(continued["run_ids"]) == 2
+    assert captured_requests[1].session_id == chat_id
+    assert captured_requests[1].conversation_context[-2:] == [
+        {"role": "user", "content": "dime cual es la carrera en la que mas se estudia"},
+        {"role": "assistant", "content": "Respuesta para dime cual es la carrera en la que mas se estudia"},
+    ]
+
+    list_response = client.get("/chats")
+    assert list_response.status_code == 200
+    assert list_response.json()[0]["chat_id"] == chat_id
+
+    restarted_client = TestClient(
+        create_app(
+            artifacts_root=artifacts_root,
+            runtime_coordinator=build_runtime(
+                artifacts_root=artifacts_root,
+                store=store,
+                agent_executor=fake_agent_executor,
+            ),
+            operational_readiness_service=StubReadinessService(artifacts_root),
+            run_metadata_store=store,
+        )
+    )
+    persisted_response = restarted_client.get(f"/chats/{chat_id}")
+    assert persisted_response.status_code == 200
+    assert len(persisted_response.json()["messages"]) == 4
+
+
+def test_chat_endpoint_persists_failed_agent_message(repo_tmp_path: Path) -> None:
+    artifacts_root = repo_tmp_path / "artifacts"
+    store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)
+
+    def failing_agent_executor(request: RunRequest, context: AgentExecutionContext) -> AgentResult:
+        raise RunError(
+            code="llm_provider_unavailable",
+            message="Ollama is unavailable for local generation",
+            stage=ErrorStage.AGENT_EXECUTION,
+        )
+
+    client = TestClient(
+        create_app(
+            artifacts_root=artifacts_root,
+            runtime_coordinator=build_runtime(
+                artifacts_root=artifacts_root,
+                store=store,
+                agent_executor=failing_agent_executor,
+            ),
+            operational_readiness_service=StubReadinessService(artifacts_root),
+            run_metadata_store=store,
+        )
+    )
+
+    response = client.post(
+        "/chats",
+        json={
+            "agent_id": "data_analyst",
+            "dataset_path": "DatasetV1/Walmart_Sales.csv",
+            "user_prompt": "Resume ventas",
+        },
+    )
+
+    assert response.status_code == 503
+    chat = client.get("/chats").json()[0]
+    detail = client.get(f"/chats/{chat['chat_id']}").json()
+    assert detail["messages"][-1]["role"] == "assistant"
+    assert detail["messages"][-1]["status"] == "failed"
+    assert detail["messages"][-1]["error"]["code"] == "llm_provider_unavailable"
+
+
 def test_post_runs_with_invalid_payload_returns_api_error_shape(repo_tmp_path: Path) -> None:
     artifacts_root = repo_tmp_path / "artifacts"
     store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)

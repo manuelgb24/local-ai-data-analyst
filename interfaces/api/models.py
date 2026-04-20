@@ -14,10 +14,19 @@ class CreateRunRequestPayload(BaseModel):
     session_id: str | None = Field(default=None, description="Optional session identifier for continuing a session.")
 
 
+class CreateChatRequestPayload(BaseModel):
+    agent_id: str = Field(..., description="Static agent identifier to execute in the chat.")
+    dataset_path: str = Field(..., description="Manual local path to a csv/xlsx/parquet dataset.")
+    user_prompt: str = Field(..., description="Initial natural-language analysis request.")
+
+
+class SendChatMessageRequestPayload(BaseModel):
+    user_prompt: str = Field(..., description="Follow-up natural-language analysis request.")
+
+
 class ApiErrorPayload(BaseModel):
     code: str
     message: str
     status: int
     details: dict[str, Any] | None = None
     trace_id: str | None = None
-

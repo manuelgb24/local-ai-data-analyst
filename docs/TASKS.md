@@ -209,6 +209,35 @@ Este documento solo lista las skills que tienen encaje directo con el roadmap ac
 | Verificación previa a afirmar “release lista” | `verification-before-completion` | `python-testing-patterns` | Antes de declarar que una versión está preparada para publicarse. |
 | Revisión final antes de merge o release | `requesting-code-review` | `verification-before-completion` | Al cerrar un bloque importante o preparar una versión utilizable. |
 
+## Fase 8 — Experiencia conversacional y analítica visual
+- **Objetivo**: convertir la superficie web en un producto usable: chats locales por dataset, continuidad de preguntas, analista con herramientas determinísticas y resultados visuales embebidos.
+- **Por qué va después del hardening inicial**: una vez existe API/UI/release baseline, el siguiente salto de producto es mejorar utilidad real sin reabrir el core congelado.
+- **Dependencias**:
+  - Fases 1 a 7 suficientemente maduras.
+- **Incluye**:
+  - chats persistentes locales anclados a `agent_id` + `dataset_path`;
+  - preguntas de seguimiento con memoria corta;
+  - endpoints `/chats*`;
+  - herramientas DuckDB acotadas en `data_analyst` para rankings, agregaciones y correlaciones;
+  - gráficos embebidos y artifacts técnicos colapsados;
+  - rediseño visual claro de la UI.
+- **Criterios de aceptación**:
+  - el usuario puede continuar una conversación sobre el mismo dataset;
+  - preguntas como “qué carrera estudia más” se responden con agregaciones reales;
+  - la UI muestra narrativa, hallazgos y gráficos, no JSON/rutas como contenido principal;
+  - no se introduce Planner, routing automático, multi-agent real, RAG, auth, backend hosted ni multi-dataset.
+- **Validación mínima**:
+  - tests unitarios de herramientas analíticas y serialización de charts;
+  - integración API de creación/listado/continuación de chats y errores persistidos;
+  - Playwright E2E de chat, seguimiento, gráfico embebido y provider down.
+### Skills aplicables en esta fase
+| Subtrabajo | Skill principal | Skills de apoyo | Cuándo usarla |
+| --- | --- | --- | --- |
+| Boundaries de chat local sobre runs | `architecture-patterns` | `python-testing-patterns` | Al asegurar que chat no se convierte en Planner, RAG ni multi-agent. |
+| Herramientas determinísticas del analista | `python-testing-patterns` | `architecture-patterns` | Al añadir rankings/correlaciones con TDD y sin SQL libre del LLM. |
+| Rediseño UI y gráficos embebidos | `vercel-react-best-practices` | `vercel-composition-patterns`, `web-design-guidelines` | Al centrar la UI en conversación, visualización y accesibilidad. |
+| Validación navegador | `playwright` | `verification-before-completion` | Al comprobar flujo real de chat, follow-up y bloqueo por proveedor. |
+
 ---
 
 ## Reglas de uso de este documento

@@ -298,7 +298,24 @@ Representar un artifact individual en API/UI.
 - `table`
 - `chart`
 
-### 11.5 ApplicationHealth
+### 11.5 ChartSpec / ChartReference enriquecido
+
+#### Propósito
+Representar un gráfico renderizable directamente por la UI sin obligar al usuario a abrir JSON ni rutas de archivo.
+
+#### Campos
+- `name`
+- `chart_type`
+- `title?`
+- `x_key?`
+- `y_key?`
+- `data`
+- `path?`
+
+#### Regla
+`data` contiene filas ya calculadas por el agente/herramienta determinística. La UI puede renderizar SVG local a partir de esos datos. `path` sigue siendo opcional y solo existe para trazabilidad técnica si se persiste un archivo.
+
+### 11.6 ApplicationHealth
 
 #### Propósito
 Exponer el estado operativo interno de la aplicación local antes de que exista liveness HTTP real.
@@ -314,7 +331,7 @@ Exponer el estado operativo interno de la aplicación local antes de que exista 
 #### Regla
 Representa wiring/configuración local válida del producto, no solo “servidor HTTP levantado”. `GET /health` hereda esta semántica mínima.
 
-### 11.6 ProveedorHealth
+### 11.7 ProveedorHealth
 
 #### Propósito
 Exponer el estado operativo del proveedor local requerido por el producto.
@@ -335,7 +352,7 @@ Exponer el estado operativo del proveedor local requerido por el producto.
 #### Regla
 Debe servir para diagnosticar si Ollama responde y si `deepseek-r1:8b` está disponible.
 
-### 11.7 AppConfig
+### 11.8 AppConfig
 
 #### Propósito
 Exponer configuración efectiva mínima útil para la UI local.
@@ -353,7 +370,83 @@ No debe exponer todavía secretos ni configuración enterprise.
 #### Regla adicional
 La CLI actual (`status` / `config`) expone esta configuración directamente y la API local mantiene el mismo shape mínimo.
 
-### 11.8 ApiError
+### 11.9 CreateChatRequest
+
+#### Propósito
+Crear una conversación local anclada a un único `agent_id` y `dataset_path`, ejecutando la primera pregunta como un run.
+
+#### Campos
+- `agent_id`
+- `dataset_path`
+- `user_prompt`
+
+#### Regla
+No introduce selección automática de agente ni múltiples datasets. El chat reutiliza `session_id` como `chat_id` para agrupar runs.
+
+### 11.10 SendChatMessageRequest
+
+#### Propósito
+Enviar una pregunta de seguimiento a un chat existente.
+
+#### Campos
+- `user_prompt`
+
+#### Regla
+El dataset y el agente se heredan del chat. No se permite cambiar dataset dentro del mismo chat en esta fase.
+
+### 11.11 ChatMessage
+
+#### Propósito
+Representar un mensaje de usuario o respuesta del analista dentro de un chat local.
+
+#### Campos
+- `message_id`
+- `role`
+- `content`
+- `created_at`
+- `run_id?`
+- `status?`
+- `result?`
+- `error?`
+
+#### Regla
+Los mensajes `assistant` pueden incluir `result` o `error`. Los detalles técnicos de `run_id` y artifacts siguen disponibles, pero no son el contenido principal de la UI.
+
+### 11.12 ChatSummary
+
+#### Propósito
+Representar un chat en listados.
+
+#### Campos
+- `chat_id`
+- `agent_id`
+- `dataset_path`
+- `title`
+- `created_at`
+- `updated_at`
+- `latest_run_id?`
+- `message_count`
+
+### 11.13 ChatDetail
+
+#### Propósito
+Representar el chat completo con mensajes y runs asociados.
+
+#### Campos
+- `chat_id`
+- `agent_id`
+- `dataset_path`
+- `title`
+- `created_at`
+- `updated_at`
+- `messages`
+- `run_ids`
+- `latest_run_id?`
+
+#### Regla
+El chat es una capa local de producto sobre runs persistidos. No sustituye la trazabilidad por run; la agrupa para conversación.
+
+### 11.14 ApiError
 
 #### Propósito
 Dar formato estable a errores de la API local.
@@ -376,11 +469,12 @@ Debe poder mapear errores del core sin perder legibilidad para UI y soporte.
 
 ## 12. Persistencia local mínima actual
 
-La fase producto actual usa una persistencia local mínima de metadata de runs con estas reglas:
+La fase producto actual usa una persistencia local mínima de metadata de runs y chats con estas reglas:
 - debe ser file-backed;
 - debe vivir junto al espacio local de artifacts o en una ubicación equivalente del mismo entorno local;
 - no requiere introducir todavía una base de datos adicional;
-- debe permitir `GET /runs`, `GET /runs/{run_id}` y `GET /runs/{run_id}/artifacts` sin depender solo del proceso actual.
+- debe permitir `GET /runs`, `GET /runs/{run_id}` y `GET /runs/{run_id}/artifacts` sin depender solo del proceso actual;
+- debe permitir `GET /chats`, `GET /chats/{chat_id}` y continuidad conversacional local sin backend remoto.
 
 ---
 
@@ -406,6 +500,28 @@ La fase producto actual usa una persistencia local mínima de metadata de runs c
 ### `GET /runs/{run_id}/artifacts`
 - Devuelve la lista de artifacts persistidos del run.
 - Salida: lista de `ArtifactListItem`.
+- Devuelve además header `X-Trace-Id`.
+
+### `POST /chats`
+- Crea un chat local y ejecuta la primera pregunta.
+- Entrada: `CreateChatRequest`.
+- Salida: `ChatDetail`.
+- Devuelve además header `X-Trace-Id`.
+
+### `GET /chats`
+- Devuelve el listado de chats persistidos localmente.
+- Salida: lista de `ChatSummary`.
+- Devuelve además header `X-Trace-Id`.
+
+### `GET /chats/{chat_id}`
+- Devuelve mensajes, runs asociados y estado del chat.
+- Salida: `ChatDetail`.
+- Devuelve además header `X-Trace-Id`.
+
+### `POST /chats/{chat_id}/messages`
+- Añade una pregunta de seguimiento al chat y lanza un nuevo run con el mismo `session_id`.
+- Entrada: `SendChatMessageRequest`.
+- Salida: `ChatDetail`.
 - Devuelve además header `X-Trace-Id`.
 
 ### `GET /health`

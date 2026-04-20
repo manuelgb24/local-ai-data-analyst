@@ -48,6 +48,9 @@ Comprobar que la API local reutiliza el core correctamente y expone contratos co
 
 ### Debe cubrir
 - `POST /runs` con solicitud válida usando `dataset_path` manual;
+- `POST /chats` para crear una conversación local con primer run;
+- `GET /chats` y `GET /chats/{chat_id}` para historial conversacional;
+- `POST /chats/{chat_id}/messages` para seguimiento con el mismo `session_id`;
 - rechazo claro de payload inválido;
 - `GET /runs` para listado de runs persistidos localmente;
 - `GET /runs/{run_id}` para estados y detalle;
@@ -80,8 +83,9 @@ Demostrar que la experiencia principal del producto funciona de forma completa.
 - lanzamiento de un run desde la UI;
 - entrada por ruta manual local al dataset;
 - visualización de narrativa y hallazgos;
-- acceso a artifacts del run;
-- refresco del historial tras crear un run nuevo;
+- visualización de gráficos embebidos sin exponer JSON/rutas como contenido principal;
+- acceso a artifacts/exportaciones técnicas del run de forma colapsada;
+- refresco del historial tras crear un chat o enviar un seguimiento;
 - errores claros cuando falte proveedor, modelo o dataset válido.
 
 ### Tipos de prueba esperados
@@ -102,14 +106,17 @@ Demostrar que la experiencia principal del producto funciona de forma completa.
 ## 4. Validación de historial persistente local
 
 ### Objetivo
-Asegurar que el sistema puede listar y recuperar runs más allá del proceso actual.
+Asegurar que el sistema puede listar y recuperar chats/runs más allá del proceso actual.
 
 ### Debe cubrir
+- persistencia file-backed mínima de metadata de chats;
 - persistencia file-backed mínima de metadata de runs;
+- `GET /chats` con resultados coherentes;
+- `GET /chats/{chat_id}` con mensajes y runs asociados;
 - `GET /runs` con resultados coherentes;
 - `GET /runs/{run_id}` sobre runs persistidos;
 - consistencia entre historial y artifacts reales;
-- exposición del historial persistido en la UI sin bloquearse por readiness del proveedor;
+- exposición del historial persistido de chats en la UI sin bloquearse por readiness del proveedor;
 - disponibilidad del historial tras reinicio del proceso cuando la metadata persistida existe.
 
 ### Casos críticos

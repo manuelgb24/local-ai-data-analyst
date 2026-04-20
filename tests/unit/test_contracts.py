@@ -146,8 +146,21 @@ def test_artifact_manifest_rejects_empty_run_id() -> None:
 def test_supporting_contract_helpers_accept_valid_values() -> None:
     sql_entry = SqlTraceEntry(statement="SELECT 1", status="ok", rows_returned=1)
     table = TableResult(name="summary", rows=[{"sales": 10}])
-    chart = ChartReference(name="sales-by-store", path="artifacts/run-123/chart.png")
+    chart = ChartReference(
+        name="sales-by-store",
+        chart_type="bar",
+        title="Ventas por tienda",
+        x_key="store",
+        y_key="sales",
+        data=[{"store": "1", "sales": 10}],
+        path="artifacts/run-123/chart.png",
+    )
 
     assert sql_entry.status.value == "ok"
     assert table.rows == [{"sales": 10}]
+    assert chart.chart_type == "bar"
+    assert chart.title == "Ventas por tienda"
+    assert chart.x_key == "store"
+    assert chart.y_key == "sales"
+    assert chart.data == [{"store": "1", "sales": 10}]
     assert chart.path == "artifacts/run-123/chart.png"

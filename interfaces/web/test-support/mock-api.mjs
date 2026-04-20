@@ -5,7 +5,9 @@ const port = 8010;
 
 let scenario = "ready";
 let createdRunCount = 0;
+let createdChatCount = 0;
 let runs = [];
+let chats = [];
 
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
@@ -120,6 +122,99 @@ function createSucceededRun({ runId, sessionId, datasetPath, prompt, createdAt, 
   };
 }
 
+function createAssistantResult({ runId, prompt, followUp = false }) {
+  const narrative = followUp
+    ? "Comparado con ECE, Civil mantiene una media ligeramente superior de horas de estudio."
+    : "Conclusión: Civil lidera por horas de estudio: media 4.26 y total 753.48 sobre 177 alumnos.\n\nCivil lidera por horas de estudio en el dataset de estudiantes.";
+  return {
+    narrative,
+    findings: [
+      "Branch con mayor promedio de Study_Hours_per_Day: Civil (avg=4.26, total=753.48, filas=177).",
+      "ECE queda en segunda posición con una media de 4.07 horas de estudio.",
+    ],
+    sql_trace: [
+      {
+        statement: "SELECT Branch, COUNT(*), SUM(Study_Hours_per_Day), AVG(Study_Hours_per_Day) FROM dataset GROUP BY Branch",
+        status: "ok",
+        purpose: "rank_dimension_by_metric",
+        rows_returned: 2,
+      },
+    ],
+    tables: [
+      {
+        name: "ranking_Branch_by_Study_Hours_per_Day",
+        rows: [
+          {
+            Branch: "Civil",
+            row_count: 177,
+            total_Study_Hours_per_Day: 753.48,
+            avg_Study_Hours_per_Day: 4.26,
+            rank: 1,
+          },
+          {
+            Branch: "ECE",
+            row_count: 161,
+            total_Study_Hours_per_Day: 655.46,
+            avg_Study_Hours_per_Day: 4.07,
+            rank: 2,
+          },
+        ],
+      },
+    ],
+    charts: [
+      {
+        name: "ranking_Branch_by_Study_Hours_per_Day",
+        chart_type: "bar",
+        title: "Study_Hours_per_Day por Branch",
+        x_key: "Branch",
+        y_key: "avg_Study_Hours_per_Day",
+        data: [
+          { Branch: "Civil", avg_Study_Hours_per_Day: 4.26 },
+          { Branch: "ECE", avg_Study_Hours_per_Day: 4.07 },
+        ],
+      },
+    ],
+    artifact_manifest: {
+      run_id: runId,
+      response_path: `artifacts/runs/${runId}/response.md`,
+      table_paths: [`artifacts/runs/${runId}/tables/ranking_Branch_by_Study_Hours_per_Day.json`],
+      chart_paths: [],
+    },
+    recommendations: followUp ? ["Revisar si la diferencia es estable por edad o residencia."] : [],
+  };
+}
+
+function createChat({ chatId, runId, datasetPath, title, prompt, createdAt, updatedAt }) {
+  const result = createAssistantResult({ runId, prompt });
+  return {
+    chat_id: chatId,
+    agent_id: "data_analyst",
+    dataset_path: datasetPath,
+    title,
+    created_at: createdAt,
+    updated_at: updatedAt,
+    messages: [
+      {
+        message_id: `${chatId}-user-001`,
+        role: "user",
+        content: prompt,
+        created_at: createdAt,
+      },
+      {
+        message_id: `${chatId}-assistant-001`,
+        role: "assistant",
+        content: result.narrative,
+        created_at: updatedAt,
+        run_id: runId,
+        status: "succeeded",
+        result,
+      },
+    ],
+    run_ids: [runId],
+    latest_run_id: runId,
+  };
+}
+
 function createFailedRun({
   runId,
   sessionId,
@@ -190,15 +285,36 @@ function buildSeedRuns() {
   ];
 }
 
+function buildSeedChats() {
+  return [
+    createChat({
+      chatId: "chat-ui-students",
+      runId: "chat-seed-run-001",
+      datasetPath: "DatasetV1/student_lifestyle_performance_dataset.csv",
+      title: "Students lifestyle",
+      prompt: "dime cual es la carrera (branch) en la que mas se estudia",
+      createdAt: "2026-04-20T12:00:00Z",
+      updatedAt: "2026-04-20T12:00:04Z",
+    }),
+  ];
+}
+
 function resetState(nextScenario = "ready") {
   scenario = nextScenario;
   createdRunCount = 0;
+  createdChatCount = 0;
   runs = buildSeedRuns();
+  chats = buildSeedChats();
 }
 
 function nextRunId(prefix) {
   createdRunCount += 1;
   return `${prefix}-${String(createdRunCount).padStart(3, "0")}`;
+}
+
+function nextChatId(prefix) {
+  createdChatCount += 1;
+  return `${prefix}-${String(createdChatCount).padStart(3, "0")}`;
 }
 
 function listSummaries() {
@@ -207,6 +323,28 @@ function listSummaries() {
 
 function findRun(runId) {
   return runs.find((run) => run.summary.run_id === runId) ?? null;
+}
+
+function listChatSummaries() {
+  return chats.map((chat) => ({
+    chat_id: chat.chat_id,
+    agent_id: chat.agent_id,
+    dataset_path: chat.dataset_path,
+    title: chat.title,
+    created_at: chat.created_at,
+    updated_at: chat.updated_at,
+    latest_run_id: chat.latest_run_id,
+    message_count: chat.messages.length,
+  }));
+}
+
+function findChat(chatId) {
+  return chats.find((chat) => chat.chat_id === chatId) ?? null;
+}
+
+function prependChat(chat) {
+  chats = [chat, ...chats];
+  return chat;
 }
 
 function prependRun(run) {
@@ -274,6 +412,115 @@ const server = http.createServer(async (request, response) => {
       model_available: true,
       details: [],
     });
+    return;
+  }
+
+  if (request.method === "GET" && pathSegments.length === 1 && pathSegments[0] === "chats") {
+    sendJson(response, 200, listChatSummaries());
+    return;
+  }
+
+  if (request.method === "POST" && pathSegments.length === 1 && pathSegments[0] === "chats") {
+    const payload = await parseJsonBody(request);
+    const datasetPath = String(payload.dataset_path ?? "");
+    const prompt = String(payload.user_prompt ?? "");
+    const agentId = String(payload.agent_id ?? "");
+
+    if (!agentId || !datasetPath || !prompt) {
+      sendJson(response, 400, {
+        code: "invalid_request",
+        message: "Missing required fields",
+        status: 400,
+        details: { category: "request", stage: "request_validation" },
+        trace_id: "mock-trace-chat-validation",
+      });
+      return;
+    }
+
+    if (scenario === "provider_down") {
+      sendJson(response, 503, {
+        code: "llm_provider_unavailable",
+        message: "Ollama is unavailable for local generation",
+        status: 503,
+        details: { category: "provider", stage: "agent_execution" },
+        trace_id: "mock-trace-chat-provider",
+      });
+      return;
+    }
+
+    const runId = nextRunId("chat-created");
+    const createdChat = prependChat(
+      createChat({
+        chatId: nextChatId("chat-ui-created"),
+        runId,
+        datasetPath,
+        title: "Nuevo análisis de estudiantes",
+        prompt,
+        createdAt: "2026-04-20T12:30:00Z",
+        updatedAt: "2026-04-20T12:30:04Z",
+      }),
+    );
+    sendJson(response, 200, createdChat);
+    return;
+  }
+
+  if (request.method === "GET" && pathSegments.length === 2 && pathSegments[0] === "chats") {
+    const chat = findChat(pathSegments[1]);
+    if (!chat) {
+      sendJson(response, 404, {
+        code: "chat_not_found",
+        message: `Chat not found: ${pathSegments[1]}`,
+        status: 404,
+        details: { category: "request", chat_id: pathSegments[1] },
+        trace_id: "mock-trace-chat-not-found",
+      });
+      return;
+    }
+    sendJson(response, 200, chat);
+    return;
+  }
+
+  if (
+    request.method === "POST" &&
+    pathSegments.length === 3 &&
+    pathSegments[0] === "chats" &&
+    pathSegments[2] === "messages"
+  ) {
+    const chat = findChat(pathSegments[1]);
+    if (!chat) {
+      sendJson(response, 404, {
+        code: "chat_not_found",
+        message: `Chat not found: ${pathSegments[1]}`,
+        status: 404,
+        details: { category: "request", chat_id: pathSegments[1] },
+        trace_id: "mock-trace-chat-not-found",
+      });
+      return;
+    }
+    const payload = await parseJsonBody(request);
+    const prompt = String(payload.user_prompt ?? "");
+    const runId = nextRunId("chat-follow-up");
+    const result = createAssistantResult({ runId, prompt, followUp: true });
+    chat.messages.push({
+      message_id: `${chat.chat_id}-user-${chat.messages.length + 1}`,
+      role: "user",
+      content: prompt,
+      created_at: "2026-04-20T12:40:00Z",
+    });
+    chat.messages.push({
+      message_id: `${chat.chat_id}-assistant-${chat.messages.length + 1}`,
+      role: "assistant",
+      content: result.narrative,
+      created_at: "2026-04-20T12:40:04Z",
+      run_id: runId,
+      status: "succeeded",
+      result,
+    });
+    chat.run_ids.push(runId);
+    chat.latest_run_id = runId;
+    chat.updated_at = "2026-04-20T12:40:04Z";
+    chats = [chat, ...chats.filter((item) => item.chat_id !== chat.chat_id)];
+    sendJson(response, 200, chat);
     return;
   }
 

@@ -28,6 +28,24 @@ def _normalize_optional_string(value: str | None, field_name: str) -> str | None
     return _require_non_empty_string(value, field_name)
 
 
+def _normalize_conversation_context(value: list[dict[str, str]] | None) -> list[dict[str, str]]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise TypeError("conversation_context must be a list")
+
+    normalized: list[dict[str, str]] = []
+    for index, item in enumerate(value):
+        if not isinstance(item, dict):
+            raise TypeError(f"conversation_context[{index}] must be an object")
+        role = _require_non_empty_string(str(item.get("role", "")), f"conversation_context[{index}].role")
+        content = _require_non_empty_string(str(item.get("content", "")), f"conversation_context[{index}].content")
+        if role not in {"user", "assistant"}:
+            raise ValueError(f"conversation_context[{index}].role must be user or assistant")
+        normalized.append({"role": role, "content": content})
+    return normalized
+
+
 def _validate_local_path(path: str, field_name: str) -> str:
     normalized = _require_non_empty_string(path, field_name)
     if _URL_SCHEME_PATTERN.match(normalized):
@@ -103,11 +121,21 @@ class TableResult:
 class ChartReference:
     name: str
     path: str | None = None
+    chart_type: str = "bar"
+    title: str | None = None
+    x_key: str | None = None
+    y_key: str | None = None
+    data: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         self.name = _require_non_empty_string(self.name, "name")
         if self.path is not None:
             self.path = _require_non_empty_string(self.path, "path")
+        self.chart_type = _require_non_empty_string(self.chart_type, "chart_type")
+        self.title = _normalize_optional_string(self.title, "title")
+        self.x_key = _normalize_optional_string(self.x_key, "x_key")
+        self.y_key = _normalize_optional_string(self.y_key, "y_key")
+        self.data = [dict(row) for row in self.data]
 
 
 @dataclass(slots=True)
@@ -118,12 +146,14 @@ class RunRequest:
     dataset_path: str
     user_prompt: str
     session_id: str | None = None
+    conversation_context: list[dict[str, str]] | None = None
 
     def __post_init__(self) -> None:
         self.agent_id = _require_non_empty_string(self.agent_id, "agent_id")
         self.dataset_path = _validate_local_path(self.dataset_path, "dataset_path")
         self.user_prompt = _require_non_empty_string(self.user_prompt, "user_prompt")
         self.session_id = _normalize_optional_string(self.session_id, "session_id")
+        self.conversation_context = _normalize_conversation_context(self.conversation_context)
 
         extension = self.dataset_path.rsplit(".", maxsplit=1)
         if len(extension) != 2 or extension[1].lower() not in self.SUPPORTED_FORMATS:

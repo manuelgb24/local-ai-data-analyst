@@ -181,3 +181,17 @@
 - **Impacto**: `.github/workflows/ci.yml` cubre solo `python` y `web`; `smoke` exige host preparado con Ollama + `deepseek-r1:8b`; la checklist de release y la documentación operativa distinguen ambos tipos de validación.
 - **Descartes**: meter smokes reales de Ollama en el workflow CI por defecto, o tratar skips/limitaciones de entorno como “pass” para release.
 - **Estado**: aceptada.
+
+## D-027 — Los chats locales agrupan runs, no cambian el core
+- **Decisión**: introducir chats persistentes locales como capa de producto sobre runs, usando `session_id = chat_id` para mantener continuidad entre preguntas del mismo dataset.
+- **Motivo**: la experiencia run-centric impedía continuar una pregunta analítica; el usuario necesita 3-4 mensajes de seguimiento sobre el mismo supuesto.
+- **Impacto**: la API expone `/chats*`, la UI se centra en conversación y la persistencia local guarda metadata de chat junto al espacio de artifacts.
+- **Descartes**: convertir esto en Planner, routing automático, multi-agent, RAG, backend hosted o memoria global.
+- **Estado**: aceptada.
+
+## D-028 — El analista usa herramientas determinísticas acotadas antes de redactar
+- **Decisión**: ampliar `data_analyst` con herramientas DuckDB determinísticas para rankings, agregaciones por grupo y correlaciones simples, sin permitir SQL libre generado por el LLM.
+- **Motivo**: preguntas como “qué carrera estudia más” sí se pueden responder con el dataset; el fallo era falta de herramienta, no falta de datos.
+- **Impacto**: el LLM recibe tablas derivadas y hallazgos determinísticos; la narrativa debe empezar por la conclusión cuando una herramienta responda la pregunta.
+- **Descartes**: dejar que el modelo invente SQL, abrir un planner o añadir agentes especializados.
+- **Estado**: aceptada.

@@ -10,6 +10,7 @@ El repositorio ya tiene cerrado el **MVP funcional**:
 - análisis sobre DuckDB local;
 - modelo fijo `deepseek-r1:8b` vía Ollama;
 - artifacts trazables por run;
+- chats locales persistentes sobre runs para continuar análisis por dataset;
 - tests unitarios, de integración, E2E y smoke mínimos.
 
 La fase actual del proyecto ya no es “construir el MVP”, sino **evolucionarlo a producto**.
@@ -17,6 +18,7 @@ La fase actual del proyecto ya no es “construir el MVP”, sino **evolucionarl
 ## Dirección actual del producto
 La siguiente etapa aprobada es:
 - **Web + API** como interfaz principal;
+- **chats analíticos locales** como experiencia principal de uso;
 - **local-first** como modelo operativo;
 - **monorepo único**;
 - **CLI** mantenida como interfaz operativa y técnica.
@@ -24,14 +26,15 @@ La siguiente etapa aprobada es:
 El núcleo funcional sigue congelado por ahora:
 - un solo agente real;
 - un dataset por run;
+- un dataset por chat;
 - entrada por ruta manual local;
 - DuckDB local;
 - Ollama local;
 - sin Planner, sin routing automático y sin multi-agent real.
 
 ## Estructura del repo hoy
-- `interfaces/web` — UI local principal para readiness, lanzamiento de runs e historial persistido con detalle y artifacts.
-- `interfaces/api` — API local mínima para runs, health e historial persistido.
+- `interfaces/web` — UI local principal para chats analíticos, gráficos embebidos, readiness e historial persistido.
+- `interfaces/api` — API local mínima para chats, runs, health e historial persistido.
 - `interfaces/cli` — interfaz operativa actual.
 - `application` — casos de uso.
 - `runtime` — coordinación del run.
@@ -110,16 +113,18 @@ Por defecto la UI queda disponible en `http://127.0.0.1:4173` y usa `/api` con p
 ```bash
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/health/proveedor
+curl http://127.0.0.1:8000/chats
 curl http://127.0.0.1:8000/runs
 ```
 
 ### Verificar la UI web
 - abrir `http://127.0.0.1:8000` si se usa `--serve-web`, o `http://127.0.0.1:4173` en modo desarrollo;
 - revisar readiness de aplicación/proveedor;
-- comprobar que el historial persistido carga y que el run más reciente queda seleccionado;
-- lanzar un run con `DatasetV1/Walmart_Sales.csv`;
-- comprobar narrativa, hallazgos, tablas y artifacts del run seleccionado;
-- seleccionar un run previo del historial y verificar su detalle persistido.
+- comprobar que los chats persistidos cargan y que el chat más reciente queda seleccionado;
+- crear un chat con `DatasetV1/student_lifestyle_performance_dataset.csv`;
+- preguntar `dime cual es la carrera (branch) en la que mas se estudia`;
+- comprobar narrativa, hallazgos, gráfico embebido y exportaciones técnicas colapsadas;
+- enviar una pregunta de seguimiento sobre el mismo dataset.
 
 ### Runner repo-local de validación
 La Fase 7 deja un runner único para validación y release hardening:
@@ -159,4 +164,5 @@ La secuencia post-MVP vive en `docs/TASKS.md` como roadmap operativo canónico. 
 - Fase 4 — historial persistente de runs y artifacts;
 - Fase 5 — observabilidad del producto;
 - Fase 6 — packaging y distribución local;
-- Fase 7 — CI y release hardening.
+- Fase 7 — CI y release hardening;
+- Fase 8 — experiencia conversacional y analítica visual.

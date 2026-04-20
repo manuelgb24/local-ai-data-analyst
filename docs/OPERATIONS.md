@@ -6,8 +6,8 @@ Dar una guía operativa mínima para arrancar y diagnosticar el sistema en su es
 ## Estado operativo actual
 Hoy el producto ya dispone de:
 - CLI operativa (`status`, `config`, `run`);
-- API local mínima para runs, health e historial persistido.
-- UI web local principal para readiness, lanzamiento de runs e historial persistido consultable.
+- API local mínima para chats, runs, health e historial persistido.
+- UI web local principal para chats analíticos, gráficos embebidos, readiness e historial persistido consultable.
 
 ## Requisitos mínimos
 - Python con dependencias del repo.
@@ -120,12 +120,29 @@ El `POST /runs` es síncrono en esta fase y devuelve el `RunDetail` final cuando
 
 ### 5. Consultar historial persistido
 ```bash
+curl http://127.0.0.1:8000/chats
 curl http://127.0.0.1:8000/runs
 curl http://127.0.0.1:8000/runs/{run_id}
 curl http://127.0.0.1:8000/runs/{run_id}/artifacts
 ```
 
 La metadata persistida del run se guarda en `artifacts/runs/<run_id>/run.json`, junto a los artifacts del propio run.
+
+### 6. Crear un chat por API
+```bash
+curl -X POST http://127.0.0.1:8000/chats ^
+  -H "Content-Type: application/json" ^
+  -d "{\"agent_id\":\"data_analyst\",\"dataset_path\":\"DatasetV1/student_lifestyle_performance_dataset.csv\",\"user_prompt\":\"dime cual es la carrera (branch) en la que mas se estudia\"}"
+```
+
+Para continuar la conversación:
+```bash
+curl -X POST http://127.0.0.1:8000/chats/{chat_id}/messages ^
+  -H "Content-Type: application/json" ^
+  -d "{\"user_prompt\":\"y comparalo con la segunda carrera\"}"
+```
+
+La metadata persistida del chat vive bajo `artifacts/chats/<chat_id>/chat.json`; los outputs técnicos siguen en `artifacts/runs/<run_id>`.
 
 ## Arranque recomendado del producto empaquetado
 
@@ -148,10 +165,11 @@ Por defecto:
 ### 3. Recorrido mínimo esperado en packaging local
 - abrir `http://127.0.0.1:8000/`;
 - comprobar readiness de aplicación y proveedor;
-- revisar que el historial persistido carga;
-- introducir `DatasetV1/Walmart_Sales.csv` como ruta manual;
-- lanzar el run con un prompt simple;
-- revisar narrativa, hallazgos, tablas y artifacts del run seleccionado.
+- revisar que los chats persistidos cargan;
+- introducir `DatasetV1/student_lifestyle_performance_dataset.csv` como ruta manual;
+- crear un chat con una pregunta inicial;
+- revisar narrativa, hallazgos, gráficos embebidos y exportaciones técnicas colapsadas;
+- enviar una pregunta de seguimiento sobre el mismo dataset.
 
 ### 4. Fallo esperado si falta la build
 Si `interfaces/web/dist/index.html` no existe, `python -m interfaces.api --serve-web` falla con error claro y pide ejecutar:
@@ -175,11 +193,11 @@ Por defecto la UI queda disponible en `http://127.0.0.1:4173`.
 ### 3. Recorrido mínimo esperado
 - abrir `http://127.0.0.1:4173`;
 - comprobar el readiness de aplicación y proveedor;
-- revisar que el historial persistido carga y que selecciona el run más reciente;
-- introducir `DatasetV1/Walmart_Sales.csv` como ruta manual;
-- lanzar el run con un prompt simple;
-- revisar narrativa, hallazgos, tablas y artifacts del run seleccionado;
-- cambiar a un run previo del historial y verificar su detalle persistido aunque el proveedor no esté listo para nuevos submits.
+- revisar que los chats persistidos cargan y que selecciona el chat más reciente;
+- introducir `DatasetV1/student_lifestyle_performance_dataset.csv` como ruta manual;
+- crear un chat con un prompt simple;
+- revisar narrativa, hallazgos, tablas y gráficos del chat seleccionado;
+- cambiar a un chat previo y verificar su detalle persistido aunque el proveedor no esté listo para nuevos submits.
 
 ## Health y readiness esperados
 El producto distingue entre:
@@ -203,13 +221,15 @@ La API local expone ambos chequeos de forma explícita.
 La fase producto actual sigue usando **ruta manual local** como entrada del dataset. Eso mantiene coherencia con el flujo actual del repositorio y con el contrato `dataset_path`.
 
 ## Historial persistente local actual
-La operación local ya puede consultar historial persistente de runs por API y por la UI web:
+La operación local ya puede consultar historial persistente de chats y runs por API y por la UI web:
+- `GET /chats`;
+- `GET /chats/{chat_id}`;
 - `GET /runs`;
 - `GET /runs/{run_id}`;
 - `GET /runs/{run_id}/artifacts`.
 
 La fuente de verdad para ese historial es la metadata file-backed que vive junto a cada run en el espacio de artifacts.
-La UI consume esos mismos contratos para listar runs previos, seleccionar un run y revisar su detalle/artifacts sin depender solo del proceso actual.
+La UI consume esos mismos contratos para listar chats previos, seleccionar una conversación y revisar resultados visuales sin depender solo del proceso actual.
 
 ## Packaging local actual
 La forma recomendada de distribución local en esta fase es repo-local y monoproceso:
