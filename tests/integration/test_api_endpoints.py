@@ -382,6 +382,90 @@ def test_health_endpoints_reuse_operational_shapes(repo_tmp_path: Path) -> None:
     assert provider_response.json()["model_available"] is True
 
 
+def test_get_local_datasets_lists_supported_datasetv1_files(repo_tmp_path: Path) -> None:
+    artifacts_root = repo_tmp_path / "artifacts"
+    dataset_root = repo_tmp_path / "DatasetV1"
+    dataset_root.mkdir()
+    csv_path = dataset_root / "student_lifestyle_performance_dataset.csv"
+    xlsx_path = dataset_root / "Walmart_Sales.xlsx"
+    ignored_path = dataset_root / "notes.txt"
+    csv_path.write_text("a,b\n1,2\n", encoding="utf-8")
+    xlsx_path.write_bytes(b"fake-xlsx-for-listing-only")
+    ignored_path.write_text("not a dataset\n", encoding="utf-8")
+    store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)
+    client = TestClient(
+        create_app(
+            artifacts_root=artifacts_root,
+            runtime_coordinator=build_runtime(
+                artifacts_root=artifacts_root,
+                store=store,
+                agent_executor=lambda request, context: AgentResult(
+                    narrative="unused",
+                    findings=[],
+                    sql_trace=[],
+                    tables=[],
+                    charts=[],
+                    artifact_manifest=ArtifactManifest(run_id=context.run_id),
+                ),
+            ),
+            operational_readiness_service=StubReadinessService(artifacts_root),
+            run_metadata_store=store,
+            local_datasets_root=dataset_root,
+        )
+    )
+
+    response = client.get("/datasets/local")
+
+    assert response.status_code == 200
+    assert response.headers["X-Trace-Id"]
+    assert response.json() == [
+        {
+            "name": "Walmart_Sales.xlsx",
+            "label": "Walmart Sales",
+            "path": str(Path("DatasetV1") / "Walmart_Sales.xlsx").replace("\\", "/"),
+            "format": "xlsx",
+            "size_bytes": xlsx_path.stat().st_size,
+        },
+        {
+            "name": "student_lifestyle_performance_dataset.csv",
+            "label": "Student lifestyle performance dataset",
+            "path": str(Path("DatasetV1") / "student_lifestyle_performance_dataset.csv").replace("\\", "/"),
+            "format": "csv",
+            "size_bytes": csv_path.stat().st_size,
+        },
+    ]
+
+
+def test_get_local_datasets_returns_empty_list_when_datasetv1_missing(repo_tmp_path: Path) -> None:
+    artifacts_root = repo_tmp_path / "artifacts"
+    store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)
+    client = TestClient(
+        create_app(
+            artifacts_root=artifacts_root,
+            runtime_coordinator=build_runtime(
+                artifacts_root=artifacts_root,
+                store=store,
+                agent_executor=lambda request, context: AgentResult(
+                    narrative="unused",
+                    findings=[],
+                    sql_trace=[],
+                    tables=[],
+                    charts=[],
+                    artifact_manifest=ArtifactManifest(run_id=context.run_id),
+                ),
+            ),
+            operational_readiness_service=StubReadinessService(artifacts_root),
+            run_metadata_store=store,
+            local_datasets_root=repo_tmp_path / "missing-DatasetV1",
+        )
+    )
+
+    response = client.get("/datasets/local")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 def test_get_runs_returns_empty_list_when_no_metadata_exists(repo_tmp_path: Path) -> None:
     artifacts_root = repo_tmp_path / "artifacts"
     store = FilesystemRunMetadataStore(artifacts_root=artifacts_root)

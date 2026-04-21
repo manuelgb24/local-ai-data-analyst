@@ -21,14 +21,14 @@ La UI y la API se apoyan en el mismo core existente. No deben reimplementar:
 - Permite crear chats analíticos locales por dataset, revisar resultados, hacer preguntas de seguimiento, consultar historial persistido y ver estado operativo.
 - No implementa lógica analítica.
 - Consume la API local del mismo repositorio.
-- La entrada documentada del dataset en esta fase se hace por ruta manual local.
+- La entrada documentada del dataset en esta fase sigue siendo un único `dataset_path` local; la UI puede facilitarlo con un selector simple de archivos en `DatasetV1` y fallback de ruta manual.
 - Trata `run_id`, rutas de artifacts y trazas SQL como detalles técnicos colapsables, no como contenido principal.
 
 ### 2. `interfaces/api`
 - Expone contratos locales para el producto.
 - Publica endpoints mínimos de chats, ejecución, listado de runs, consulta de runs, artifacts y health.
 - Traduce peticiones externas al caso de uso del sistema.
-- Recibe la ruta manual local al dataset y construye el `RunRequest` interno.
+- Recibe un `dataset_path` local, ya sea escrito manualmente o seleccionado desde `DatasetV1`, y construye el `RunRequest` interno.
 - En Fase 6 puede servir además la UI build en modo monoproceso para reducir fricción de arranque local.
 - No duplica lógica de runtime o agente.
 
@@ -174,6 +174,7 @@ Sin reabrir la arquitectura del core, la dirección documental del repositorio p
 - Un solo agente real: `data_analyst`.
 - Un único dataset por run.
 - Solo archivos locales soportados mediante ruta manual.
+- El selector de `DatasetV1` es una ayuda de UI/API local, no un catálogo complejo ni soporte multi-dataset.
 - Solo DuckDB como motor.
 - Solo Ollama local como proveedor del modelo.
 - Sin multi-agent real.

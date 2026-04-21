@@ -299,6 +299,25 @@ function buildSeedChats() {
   ];
 }
 
+function listLocalDatasets() {
+  return [
+    {
+      name: "student_lifestyle_performance_dataset.csv",
+      label: "Student lifestyle performance dataset",
+      path: "DatasetV1/student_lifestyle_performance_dataset.csv",
+      format: "csv",
+      size_bytes: 123456,
+    },
+    {
+      name: "Walmart_Sales.csv",
+      label: "Walmart Sales",
+      path: "DatasetV1/Walmart_Sales.csv",
+      format: "csv",
+      size_bytes: 654321,
+    },
+  ];
+}
+
 function resetState(nextScenario = "ready") {
   scenario = nextScenario;
   createdRunCount = 0;
@@ -412,6 +431,11 @@ const server = http.createServer(async (request, response) => {
       model_available: true,
       details: [],
     });
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/datasets/local") {
+    sendJson(response, 200, listLocalDatasets());
     return;
   }
 

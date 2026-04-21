@@ -465,6 +465,21 @@ Debe poder mapear errores del core sin perder legibilidad para UI y soporte.
 - `details.category` debe clasificar el error como `request`, `dataset`, `provider` o `core`.
 - Cuando exista contexto adicional, debe vivir dentro de `details.context`.
 
+### 11.15 LocalDatasetListItem
+
+#### Propósito
+Representar un archivo local seleccionable desde la UI para evitar copiar rutas habituales de `DatasetV1`.
+
+#### Campos
+- `name`
+- `label`
+- `path`
+- `format`
+- `size_bytes`
+
+#### Regla
+Este contrato es un selector local simple sobre `DatasetV1`. No carga datasets, no perfila datos, no introduce catálogo complejo y no permite usar varios datasets en un run. La UI sigue enviando un único `dataset_path` en `CreateChatRequest`.
+
 ---
 
 ## 12. Persistencia local mínima actual
@@ -534,6 +549,13 @@ La fase producto actual usa una persistencia local mínima de metadata de runs y
 - Expone `ProveedorHealth`.
 - Sirve para readiness del proveedor local y del modelo requerido.
 - Devuelve además header `X-Trace-Id`.
+
+### `GET /datasets/local`
+- Lista archivos locales soportados (`csv`, `xlsx`, `parquet`) detectados en `DatasetV1`.
+- Salida: lista de `LocalDatasetListItem`.
+- Si `DatasetV1` no existe o no contiene archivos soportados, devuelve `[]`.
+- Devuelve además header `X-Trace-Id`.
+- No carga el dataset en DuckDB ni sustituye el contrato `dataset_path`; solo facilita la selección en la UI.
 
 ---
 

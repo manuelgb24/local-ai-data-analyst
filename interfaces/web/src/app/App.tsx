@@ -5,10 +5,11 @@ import {
   createChat,
   fetchChatDetail,
   fetchChats,
+  fetchLocalDatasets,
   normalizeUnknownError,
   sendChatMessage,
 } from "../api/client";
-import type { ApiError, ChatDetail, ChatSummary, CreateChatRequest } from "../api/types";
+import type { ApiError, ChatDetail, ChatSummary, CreateChatRequest, LocalDatasetListItem } from "../api/types";
 import { ChatConversation } from "../components/ChatConversation";
 import { ChatSidebar } from "../components/ChatSidebar";
 import { ErrorBanner } from "../components/ErrorBanner";
@@ -46,6 +47,9 @@ interface NewChatCardProps {
   defaultAgentId: string;
   disabled: boolean;
   disabledReason: string | null;
+  datasets: LocalDatasetListItem[];
+  datasetsLoading: boolean;
+  datasetError: ApiError | null;
   submitting: boolean;
   onSubmit: (payload: CreateChatRequest) => Promise<void>;
 }
@@ -54,6 +58,9 @@ function NewChatCard({
   defaultAgentId,
   disabled,
   disabledReason,
+  datasets,
+  datasetsLoading,
+  datasetError,
   submitting,
   onSubmit,
 }: NewChatCardProps) {
@@ -63,10 +70,23 @@ function NewChatCard({
     user_prompt: "",
   });
   const [errors, setErrors] = useState<NewChatErrors>({});
+  const [manualDatasetMode, setManualDatasetMode] = useState(false);
 
   useEffect(() => {
     setPayload((current) => ({ ...current, agent_id: defaultAgentId }));
   }, [defaultAgentId]);
+
+  useEffect(() => {
+    if (manualDatasetMode || datasets.length === 0) {
+      return;
+    }
+    setPayload((current) => {
+      if (current.dataset_path && datasets.some((dataset) => dataset.path === current.dataset_path)) {
+        return current;
+      }
+      return { ...current, dataset_path: datasets[0].path };
+    });
+  }, [datasets, manualDatasetMode]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -98,20 +118,67 @@ function NewChatCard({
             <option value="data_analyst">data_analyst</option>
           </select>
         </label>
-        <label className="form-field">
-          <span>Ruta local del dataset</span>
-          <input
-            aria-label="Ruta local del dataset"
-            placeholder="DatasetV1/student_lifestyle_performance_dataset.csv"
-            value={payload.dataset_path}
-            onChange={(event) => {
-              setPayload((current) => ({ ...current, dataset_path: event.target.value }));
-              setErrors((current) => ({ ...current, dataset_path: undefined }));
-            }}
-            disabled={submitting}
-          />
-          {errors.dataset_path ? <small className="field-error">{errors.dataset_path}</small> : null}
-        </label>
+        {!manualDatasetMode && datasets.length > 0 ? (
+          <label className="form-field">
+            <span>Dataset local</span>
+            <select
+              aria-label="Dataset local"
+              value={payload.dataset_path}
+              onChange={(event) => {
+                setPayload((current) => ({ ...current, dataset_path: event.target.value }));
+                setErrors((current) => ({ ...current, dataset_path: undefined }));
+              }}
+              disabled={submitting}
+            >
+              {datasets.map((dataset) => (
+                <option key={dataset.path} value={dataset.path}>
+                  {dataset.label} · {dataset.format.toUpperCase()}
+                </option>
+              ))}
+            </select>
+            <small className="field-help">Detectados en DatasetV1. Puedes cambiar a ruta manual si lo necesitas.</small>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setManualDatasetMode(true)}
+              disabled={submitting}
+            >
+              Usar ruta manual
+            </button>
+            {errors.dataset_path ? <small className="field-error">{errors.dataset_path}</small> : null}
+          </label>
+        ) : (
+          <label className="form-field">
+            <span>Ruta local del dataset</span>
+            <input
+              aria-label="Ruta local del dataset"
+              placeholder="DatasetV1/student_lifestyle_performance_dataset.csv"
+              value={payload.dataset_path}
+              onChange={(event) => {
+                setPayload((current) => ({ ...current, dataset_path: event.target.value }));
+                setErrors((current) => ({ ...current, dataset_path: undefined }));
+              }}
+              disabled={submitting}
+            />
+            {datasetsLoading ? <small className="field-help">Buscando datasets en DatasetV1…</small> : null}
+            {datasetError ? <small className="field-error">No se pudieron cargar los datasets guardados.</small> : null}
+            {datasets.length > 0 ? (
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  setManualDatasetMode(false);
+                  setPayload((current) => ({ ...current, dataset_path: datasets[0].path }));
+                  setErrors((current) => ({ ...current, dataset_path: undefined }));
+                }}
+                disabled={submitting}
+              >
+                Elegir desde DatasetV1
+              </button>
+            ) : null}
+            {errors.dataset_path ? <small className="field-error">{errors.dataset_path}</small> : null}
+          </label>
+        )}
         <label className="form-field">
           <span>Pregunta inicial</span>
           <textarea
@@ -151,10 +218,13 @@ export function App() {
   const [chatListError, setChatListError] = useState<ApiError | null>(null);
   const [chatDetailError, setChatDetailError] = useState<ApiError | null>(null);
   const [submitError, setSubmitError] = useState<ApiError | null>(null);
+  const [datasetListError, setDatasetListError] = useState<ApiError | null>(null);
   const [chatListLoading, setChatListLoading] = useState(true);
   const [chatDetailLoading, setChatDetailLoading] = useState(false);
+  const [datasetListLoading, setDatasetListLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [localDatasets, setLocalDatasets] = useState<LocalDatasetListItem[]>([]);
 
   const defaultAgentId = readiness?.application.default_agent_id ?? "data_analyst";
 
@@ -188,6 +258,35 @@ export function App() {
   useEffect(() => {
     void loadChats({ preferLatest: true });
   }, [loadChats]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadLocalDatasets() {
+      setDatasetListLoading(true);
+      setDatasetListError(null);
+      try {
+        const datasets = await fetchLocalDatasets();
+        if (!ignore) {
+          setLocalDatasets(datasets);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setDatasetListError(normalizeUnknownError(error));
+          setLocalDatasets([]);
+        }
+      } finally {
+        if (!ignore) {
+          setDatasetListLoading(false);
+        }
+      }
+    }
+
+    void loadLocalDatasets();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -301,6 +400,9 @@ export function App() {
             defaultAgentId={defaultAgentId}
             disabled={!canSubmit}
             disabledReason={blockedReason}
+            datasets={localDatasets}
+            datasetsLoading={datasetListLoading}
+            datasetError={datasetListError}
             submitting={submitting}
             onSubmit={handleCreateChat}
           />

@@ -207,9 +207,45 @@ def test_data_analyst_agent_builds_grouped_study_ranking_and_embedded_chart() ->
     assert result.charts[0].y_key == "avg_Study_Hours_per_Day"
     assert result.charts[0].data[0]["Branch"] == "Civil"
     assert any("Civil" in finding and "Study_Hours_per_Day" in finding for finding in result.findings)
-    assert result.narrative.startswith("Conclusión:")
+    assert not result.narrative.lower().startswith(("conclusión:", "conclusion:"))
     assert "Civil" in result.narrative
     assert '"conversation_context"' in llm.prompts[0]
+    assert "Dataset has" not in llm.prompts[0]
+    assert "Preview query returned" not in llm.prompts[0]
+    assert '"preview_rows": []' in llm.prompts[0]
+    assert '"numeric_summary": []' in llm.prompts[0]
+
+
+def test_data_analyst_agent_strips_repetitive_section_headings_from_narrative() -> None:
+    llm = FakeLLMAdapter(
+        response=(
+            "Conclusión: Civil lidera por horas de estudio.\n\n"
+            "Contexto: La tabla derivada compara las carreras.\n\n"
+            "Nota: No hace falta revisar rutas técnicas."
+        )
+    )
+    agent = DataAnalystAgent(llm_adapter=llm)
+    context = build_context(
+        duckdb_context=PatternDuckDBContext(),
+        schema=[
+            DatasetColumn(name="Branch", type="VARCHAR"),
+            DatasetColumn(name="Study_Hours_per_Day", type="DOUBLE"),
+        ],
+    )
+    request = RunRequest(
+        agent_id="data_analyst",
+        dataset_path="DatasetV1/student_lifestyle_performance_dataset.csv",
+        user_prompt="dime cual es la carrera branch en la que mas se estudia",
+    )
+
+    result = agent(request, context)
+
+    normalized = result.narrative.lower()
+    assert "conclusión:" not in normalized
+    assert "conclusion:" not in normalized
+    assert "contexto:" not in normalized
+    assert "nota:" not in normalized
+    assert "Civil" in result.narrative
 
 
 def test_data_analyst_agent_builds_correlation_for_two_numeric_columns() -> None:

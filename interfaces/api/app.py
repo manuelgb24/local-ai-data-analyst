@@ -52,6 +52,8 @@ DEFAULT_API_HOST = "127.0.0.1"
 DEFAULT_API_PORT = 8000
 DEFAULT_ARTIFACTS_ROOT = "artifacts/runs"
 DEFAULT_WEB_DIST = Path(__file__).resolve().parents[1] / "web" / "dist"
+DEFAULT_LOCAL_DATASETS_ROOT = Path(__file__).resolve().parents[2] / "DatasetV1"
+_SUPPORTED_LOCAL_DATASET_EXTENSIONS = frozenset({"csv", "xlsx", "parquet"})
 _PROVIDER_UNAVAILABLE_CODES = frozenset({"llm_provider_unavailable"})
 _LOGGER = get_logger("api")
 
@@ -89,6 +91,7 @@ def create_app(
     operational_readiness_service: OperationalReadinessService | None = None,
     run_metadata_store: FilesystemRunMetadataStore | None = None,
     chat_store: FilesystemChatStore | None = None,
+    local_datasets_root: str | Path = DEFAULT_LOCAL_DATASETS_ROOT,
     serve_web: bool = False,
     web_dist: str | Path | None = None,
 ) -> FastAPI:
@@ -340,6 +343,13 @@ def create_app(
     def get_provider_health() -> JSONResponse:
         return JSONResponse(status_code=200, content=serialize_response(readiness_service.get_provider_health()))
 
+    @app.get("/datasets/local")
+    def list_local_datasets() -> JSONResponse:
+        return JSONResponse(
+            status_code=200,
+            content=serialize_response(_list_local_datasets(local_datasets_root)),
+        )
+
     if serve_web:
         app.mount(
             "/",
@@ -435,6 +445,35 @@ def validate_web_dist(web_dist: str | Path | None = None) -> Path:
             f"'{resolved}'. Run 'npm --prefix interfaces/web run build' before using --serve-web."
         )
     return resolved
+
+
+def _list_local_datasets(local_datasets_root: str | Path) -> list[dict[str, object]]:
+    root = Path(local_datasets_root)
+    if not root.exists() or not root.is_dir():
+        return []
+
+    datasets: list[dict[str, object]] = []
+    for path in sorted(root.iterdir(), key=lambda item: item.name):
+        if not path.is_file():
+            continue
+        dataset_format = path.suffix.lower().lstrip(".")
+        if dataset_format not in _SUPPORTED_LOCAL_DATASET_EXTENSIONS:
+            continue
+        datasets.append(
+            {
+                "name": path.name,
+                "label": _dataset_label(path.stem),
+                "path": f"DatasetV1/{path.name}",
+                "format": dataset_format,
+                "size_bytes": path.stat().st_size,
+            }
+        )
+    return datasets
+
+
+def _dataset_label(stem: str) -> str:
+    label = " ".join(stem.replace("-", " ").replace("_", " ").split())
+    return label[:1].upper() + label[1:]
 
 
 def _trace_id(request: Request | None = None) -> str:

@@ -67,7 +67,7 @@ export function ReadinessPanel({
         <div className="readiness-grid">
           <article className="status-card">
             <div className="status-card-header">
-              <h3>Aplicacion</h3>
+              <h3>Sistema</h3>
               <span
                 className={`status-chip ${
                   readiness.application.ready ? "status-ok" : "status-error"
@@ -76,20 +76,14 @@ export function ReadinessPanel({
                 {readiness.application.ready ? "lista" : "no lista"}
               </span>
             </div>
-            <dl className="metadata-list">
-              <div>
-                <dt>Agente por defecto</dt>
-                <dd>{readiness.application.default_agent_id}</dd>
-              </div>
-              <div>
-                <dt>Artifacts root</dt>
-                <dd>{readiness.application.artifacts_root}</dd>
-              </div>
-            </dl>
             <h4>Checks</h4>
             {renderChecks(readiness.application.checks)}
-            <h4>Detalles</h4>
-            {renderDetails(readiness.application.details)}
+            {!readiness.application.ready ? (
+              <>
+                <h4>Qué revisar</h4>
+                {renderDetails(readiness.application.details)}
+              </>
+            ) : null}
           </article>
 
           <article className="status-card">
@@ -101,26 +95,15 @@ export function ReadinessPanel({
                 {readiness.provider.ready ? "listo" : "no listo"}
               </span>
             </div>
-            <dl className="metadata-list">
-              <div>
-                <dt>Nombre</dt>
-                <dd>{readiness.provider.proveedor}</dd>
-              </div>
-              <div>
-                <dt>Endpoint</dt>
-                <dd>{readiness.provider.endpoint}</dd>
-              </div>
-              <div>
-                <dt>Modelo</dt>
-                <dd>{readiness.provider.model}</dd>
-              </div>
-              <div>
-                <dt>Modelo disponible</dt>
-                <dd>{readiness.provider.model_available ? "si" : "no"}</dd>
-              </div>
-            </dl>
-            <h4>Detalles</h4>
-            {renderDetails(readiness.provider.details)}
+            <p className="provider-summary">
+              {readiness.provider.proveedor} · {readiness.provider.model}
+            </p>
+            {!readiness.provider.ready ? (
+              <>
+                <h4>Qué revisar</h4>
+                {renderDetails(readiness.provider.details)}
+              </>
+            ) : null}
           </article>
         </div>
       ) : null}

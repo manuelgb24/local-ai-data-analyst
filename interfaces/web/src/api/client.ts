@@ -6,6 +6,7 @@ import type {
   ChatSummary,
   CreateChatRequest,
   CreateRunRequest,
+  LocalDatasetListItem,
   ProveedorHealth,
   ReadinessState,
   RunDetail,
@@ -115,6 +116,10 @@ export async function fetchReadiness(): Promise<ReadinessState> {
     fetchProviderHealth(),
   ]);
   return { application, provider };
+}
+
+export async function fetchLocalDatasets(): Promise<LocalDatasetListItem[]> {
+  return requestJson<LocalDatasetListItem[]>("/datasets/local");
 }
 
 export async function createRun(payload: CreateRunRequest): Promise<RunDetail> {

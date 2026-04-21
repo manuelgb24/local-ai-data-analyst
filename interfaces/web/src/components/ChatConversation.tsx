@@ -44,7 +44,8 @@ function ResultTable({ table }: { table: TableResult }) {
 
   return (
     <div className="compact-table">
-      <h4>{table.name}</h4>
+      <p className="eyebrow">Evidencia</p>
+      <h4>{table.name.replace(/[_-]+/g, " ")}</h4>
       <div className="table-wrapper">
         <table>
           <thead>
@@ -69,40 +70,17 @@ function ResultTable({ table }: { table: TableResult }) {
   );
 }
 
-function TechnicalExports({ message }: { message: ChatMessage }) {
-  const manifest = message.result?.artifact_manifest;
-  const paths = [
-    manifest?.response_path,
-    ...(manifest?.table_paths ?? []),
-    ...(manifest?.chart_paths ?? []),
-  ].filter((path): path is string => Boolean(path));
-
-  if (paths.length === 0 && !message.run_id) {
-    return null;
-  }
-
+function isTechnicalFinding(finding: string): boolean {
   return (
-    <details className="technical-details">
-      <summary>Exportaciones técnicas</summary>
-      <dl className="metadata-list metadata-list-compact">
-        {message.run_id ? (
-          <div>
-            <dt>Run técnico</dt>
-            <dd>{message.run_id}</dd>
-          </div>
-        ) : null}
-      </dl>
-      {paths.length > 0 ? (
-        <ul className="artifact-list">
-          {paths.map((path) => (
-            <li key={path} className="artifact-item artifact-item-compact">
-              <code>{path}</code>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </details>
+    /^Dataset has /i.test(finding) ||
+    /^Preview query returned /i.test(finding) ||
+    /^Dataset has no numeric columns/i.test(finding) ||
+    /^Column .+: count=/i.test(finding)
   );
+}
+
+function isTechnicalTable(table: TableResult): boolean {
+  return table.name === "preview" || table.name === "numeric_summary";
 }
 
 function AssistantPayload({ message }: { message: ChatMessage }) {
@@ -121,14 +99,15 @@ function AssistantPayload({ message }: { message: ChatMessage }) {
   }
 
   const chartNames = new Set((result.charts ?? []).map((chart) => chart.name));
-  const visibleTables = result.tables.filter((table) => !chartNames.has(table.name));
+  const visibleFindings = result.findings.filter((finding) => !isTechnicalFinding(finding));
+  const visibleTables = result.tables.filter((table) => !chartNames.has(table.name) && !isTechnicalTable(table));
 
   return (
     <>
       <p className="assistant-narrative">{result.narrative}</p>
-      {result.findings.length > 0 ? (
+      {visibleFindings.length > 0 ? (
         <div className="finding-grid">
-          {result.findings.slice(0, 4).map((finding) => (
+          {visibleFindings.slice(0, 4).map((finding) => (
             <article className="finding-card" key={finding}>
               {finding}
             </article>
@@ -141,7 +120,6 @@ function AssistantPayload({ message }: { message: ChatMessage }) {
       {visibleTables.slice(0, 3).map((table) => (
         <ResultTable key={table.name} table={table} />
       ))}
-      <TechnicalExports message={message} />
     </>
   );
 }

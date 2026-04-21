@@ -43,6 +43,14 @@ export interface CreateChatRequest {
   user_prompt: string;
 }
 
+export interface LocalDatasetListItem {
+  name: string;
+  label: string;
+  path: string;
+  format: "csv" | "xlsx" | "parquet" | string;
+  size_bytes: number;
+}
+
 export interface SendChatMessageRequest {
   user_prompt: string;
 }
@@ -87,7 +95,7 @@ export interface TableResult {
 export interface ChartReference {
   name: string;
   path?: string | null;
-  chart_type?: "bar" | string;
+  chart_type?: "bar" | "line" | "scatter" | string;
   title?: string | null;
   x_key?: string | null;
   y_key?: string | null;

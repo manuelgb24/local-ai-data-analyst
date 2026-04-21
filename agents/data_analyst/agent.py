@@ -65,6 +65,7 @@ _METRIC_ALIASES = {
 }
 
 _RELATION_TERMS = ("correl", "relacion", "relación", "asoci", "sonlosque", "compar")
+_REPETITIVE_SECTION_PREFIX = re.compile(r"(?im)^\s*(conclusi[oó]n|contexto|nota)\s*:\s*")
 
 
 @dataclass(slots=True)
@@ -121,7 +122,7 @@ class DataAnalystAgent:
             context,
             preview_table,
             summary_table,
-            findings,
+            tool_findings,
             analysis_tables=tool_tables,
             charts=charts,
         )
@@ -529,6 +530,7 @@ class DataAnalystAgent:
         analysis_tables: list[TableResult] | None = None,
         charts: list[ChartReference] | None = None,
     ) -> str:
+        has_analysis_tables = bool(analysis_tables)
         prompt_payload = {
             "user_prompt": request.user_prompt,
             "conversation_context": request.conversation_context or [],
@@ -543,8 +545,8 @@ class DataAnalystAgent:
                     for column in context.dataset_profile.schema
                 ],
             },
-            "preview_rows": preview_table.rows,
-            "numeric_summary": [] if summary_table is None else summary_table.rows,
+            "preview_rows": [] if has_analysis_tables else preview_table.rows,
+            "numeric_summary": [] if has_analysis_tables or summary_table is None else summary_table.rows,
             "analysis_tables": [] if analysis_tables is None else [
                 {"name": table.name, "rows": table.rows} for table in analysis_tables
             ],
@@ -565,16 +567,31 @@ class DataAnalystAgent:
             [
                 "Eres data_analyst, un analista de datos local-first.",
                 "Responde en español con tono claro, directo y profesional.",
-                "Empieza por la conclusión cuando analysis_tables o deterministic_findings respondan la pregunta.",
+                "Responde como en un chat normal: una respuesta natural, breve y útil.",
+                "No uses secciones ni encabezados como Conclusión, Contexto o Nota salvo que el usuario lo pida.",
+                "Integra la información importante dentro de la propia respuesta.",
+                "No recites metadatos técnicos como número de filas/columnas, preview rows o summaries numéricos salvo que el usuario los pida.",
+                "Cuando analysis_tables o deterministic_findings respondan la pregunta, usa esos datos para contestar de forma específica.",
                 "No digas que no es posible determinar algo si una tabla derivada lo responde.",
                 "Do not invent columns, metrics, trends, charts, or file outputs.",
+                "Do not mention artifact paths, SQL traces, JSON files, or exported files.",
                 "Mention uncertainty explicitly only if the available context is truly limited.",
                 json.dumps(prompt_payload, ensure_ascii=False, default=str, indent=2),
             ]
         )
 
     def _compose_narrative(self, deterministic_answer: str | None, llm_narrative: str) -> str:
-        llm_narrative = llm_narrative.strip()
+        llm_narrative = self._clean_narrative(llm_narrative)
         if deterministic_answer is None:
             return llm_narrative
-        return f"Conclusión: {deterministic_answer}\n\n{llm_narrative}"
+        deterministic_answer = self._clean_narrative(deterministic_answer)
+        if not llm_narrative:
+            return deterministic_answer
+        if llm_narrative.lower().startswith(deterministic_answer.lower()):
+            return llm_narrative
+        return f"{deterministic_answer}\n\n{llm_narrative}"
+
+    def _clean_narrative(self, value: str) -> str:
+        cleaned = _REPETITIVE_SECTION_PREFIX.sub("", value.strip())
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        return cleaned.strip()

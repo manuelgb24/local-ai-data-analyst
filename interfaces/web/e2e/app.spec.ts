@@ -16,7 +16,9 @@ test("creates a dataset chat and renders an embedded chart instead of raw artifa
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Chats analíticos locales", exact: true })).toBeVisible();
-  await page.getByLabel("Ruta local del dataset").fill("DatasetV1/student_lifestyle_performance_dataset.csv");
+  await page
+    .getByLabel("Dataset local")
+    .selectOption("DatasetV1/student_lifestyle_performance_dataset.csv");
   await page
     .getByLabel("Pregunta inicial")
     .fill("dime cual es la carrera (branch) en la que mas se estudia");
@@ -24,8 +26,34 @@ test("creates a dataset chat and renders an embedded chart instead of raw artifa
 
   await expect(page.getByText("Civil lidera por horas de estudio")).toBeVisible();
   await expect(page.getByTestId("chart-ranking_Branch_by_Study_Hours_per_Day")).toBeVisible();
-  await expect(page.getByText("Exportaciones técnicas")).toBeVisible();
-  await expect(page.getByText("artifacts/runs/chat-created-001/response.md")).toBeHidden();
+  await expect(page.getByText("Exportaciones técnicas")).toHaveCount(0);
+  await expect(page.getByText("artifacts/runs/chat-created-001/response.md")).toHaveCount(0);
+  await expect(page.getByText("preview", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("numeric_summary", { exact: true })).toHaveCount(0);
+});
+
+test("allows manual dataset path fallback", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Usar ruta manual" }).click();
+  await page.getByLabel("Ruta local del dataset").fill("DatasetV1/student_lifestyle_performance_dataset.csv");
+  await page.getByLabel("Pregunta inicial").fill("dime cual es la carrera branch en la que mas se estudia");
+  await page.getByRole("button", { name: "Crear chat" }).click();
+
+  await expect(page.getByText("Civil lidera por horas de estudio")).toBeVisible();
+});
+
+test("switches compatible chart views without requesting new analysis", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Students lifestyle/ }).click();
+
+  await expect(page.getByTestId("chart-ranking_Branch_by_Study_Hours_per_Day")).toBeVisible();
+  await page.getByRole("button", { name: "Línea" }).click();
+  await expect(page.getByTestId("chart-view-line")).toBeVisible();
+  await page.getByRole("button", { name: "Puntos" }).click();
+  await expect(page.getByTestId("chart-view-scatter")).toBeVisible();
+  await page.getByRole("button", { name: "Tabla" }).click();
+  await expect(page.getByTestId("chart-view-table")).toBeVisible();
 });
 
 test("continues the selected chat with conversational memory", async ({ page }) => {

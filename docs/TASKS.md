@@ -92,7 +92,7 @@ Este documento solo lista las skills que tienen encaje directo con el roadmap ac
 - **Incluye**:
   - pantalla de readiness;
   - formulario principal;
-  - entrada por ruta manual local al dataset;
+  - entrada por `dataset_path` local al dataset, con ruta manual o selector simple de `DatasetV1`;
   - visualización de narrativa, hallazgos y artifacts;
   - tratamiento claro de errores operativos.
 - **Criterios de aceptación**:

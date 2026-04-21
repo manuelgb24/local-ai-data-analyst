@@ -8,7 +8,7 @@ Fijar qué entra y qué no entra en la fase actual del producto para evitar que 
 - un único agente real: `data_analyst`;
 - selección explícita del agente;
 - un dataset principal por run;
-- entrada por ruta manual local (`csv`, `xlsx`, `parquet`);
+- entrada por `dataset_path` local (`csv`, `xlsx`, `parquet`), ya sea escrito manualmente o seleccionado desde el selector simple de `DatasetV1`;
 - DuckDB local;
 - Ollama local;
 - artifacts trazables por run.
@@ -45,6 +45,7 @@ Fijar qué entra y qué no entra en la fase actual del producto para evitar que 
 - historial persistente local de runs/chats;
 - herramientas analíticas determinísticas acotadas dentro de `data_analyst`;
 - visualización clara de resultados sin exponer JSON/rutas como contenido principal;
+- selector local simple de archivos en `DatasetV1`, siempre mapeado a un único `dataset_path`;
 - forma de distribución local;
 - validación automatizada;
 - calidad de la UI y de la API local.
