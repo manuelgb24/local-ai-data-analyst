@@ -43,9 +43,17 @@ export function ChatSidebar({
       </div>
 
       {error ? <ErrorBanner title="No se pudieron cargar los chats" error={error} /> : null}
-      {!error && isLoading ? <p className="muted">Cargando conversaciones…</p> : null}
+      {!error && isLoading ? (
+        <div className="skeleton-stack" aria-label="Cargando conversaciones">
+          <span className="skeleton-card" />
+          <span className="skeleton-card" />
+        </div>
+      ) : null}
       {!error && !isLoading && chats.length === 0 ? (
-        <p className="muted">Crea el primer chat para analizar un dataset local.</p>
+        <div className="mini-empty-state">
+          <strong>Sin chats todavía</strong>
+          <p className="muted">Crea el primero para fijar un dataset local y hacer preguntas de seguimiento.</p>
+        </div>
       ) : null}
 
       <ul className="chat-list">
@@ -55,6 +63,7 @@ export function ChatSidebar({
               type="button"
               className={`chat-list-item ${chat.chat_id === selectedChatId ? "chat-list-item-active" : ""}`}
               onClick={() => onSelect(chat.chat_id)}
+              aria-pressed={chat.chat_id === selectedChatId}
             >
               <strong>{datasetLabel(chat.dataset_path)}</strong>
               <span>{chat.title}</span>

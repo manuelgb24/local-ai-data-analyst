@@ -323,7 +323,7 @@ function resetState(nextScenario = "ready") {
   createdRunCount = 0;
   createdChatCount = 0;
   runs = buildSeedRuns();
-  chats = buildSeedChats();
+  chats = nextScenario === "empty_chats" ? [] : buildSeedChats();
 }
 
 function nextRunId(prefix) {

@@ -74,7 +74,31 @@ test("keeps chats browseable when provider is down and blocks new submissions", 
   await page.goto("/");
 
   await expect(page.getByText("Ollama no responde en 127.0.0.1:11434.")).toBeVisible();
+  await expect(page.getByText("Proveedor y modelo")).toBeVisible();
+  await expect(page.getByText("deepseek-r1:8b")).toBeHidden();
   await expect(page.getByRole("button", { name: "Crear chat" })).toBeDisabled();
   await page.getByRole("button", { name: /Students lifestyle/ }).click();
   await expect(page.getByText("Civil lidera por horas de estudio")).toBeVisible();
+});
+
+test("renders helpful empty states when there are no local chats yet", async ({ page, request }) => {
+  await setScenario(request, "empty_chats");
+  await page.goto("/");
+
+  await expect(page.getByText("Sin chats todavía")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Crea o selecciona un chat" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Crear chat" })).toBeEnabled();
+});
+
+test("prioritizes the selected conversation on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { name: "Students lifestyle" })).toBeVisible();
+  const chatBox = await page.getByRole("heading", { name: "Students lifestyle" }).boundingBox();
+  const formBox = await page.getByRole("heading", { name: "Crear chat" }).boundingBox();
+
+  expect(chatBox).not.toBeNull();
+  expect(formBox).not.toBeNull();
+  expect(chatBox!.y).toBeLessThan(formBox!.y);
 });

@@ -16,6 +16,21 @@ interface ChatConversationProps {
   onSendMessage: (prompt: string) => Promise<void>;
 }
 
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("es", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function formatTimestamp(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : DATE_TIME_FORMATTER.format(date);
+}
+
+function datasetLabel(path: string): string {
+  const normalized = path.split(/[\\/]/).pop() ?? path;
+  return normalized.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ");
+}
+
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) {
     return "—";
@@ -29,6 +44,25 @@ function formatValue(value: unknown): string {
   return String(value);
 }
 
+function ConversationSkeleton() {
+  return (
+    <section className="conversation-panel panel conversation-panel-loading" aria-label="Cargando chat">
+      <div className="conversation-header">
+        <div className="skeleton-stack">
+          <span className="skeleton-line skeleton-line-short" />
+          <span className="skeleton-line skeleton-line-title" />
+        </div>
+        <span className="skeleton-pill" />
+      </div>
+      <div className="message-list">
+        <span className="skeleton-message skeleton-message-user" />
+        <span className="skeleton-message skeleton-message-assistant" />
+        <span className="skeleton-card skeleton-card-tall" />
+      </div>
+    </section>
+  );
+}
+
 function ResultTable({ table }: { table: TableResult }) {
   const columns = useMemo(() => {
     const names = new Set<string>();
@@ -39,7 +73,13 @@ function ResultTable({ table }: { table: TableResult }) {
   }, [table.rows]);
 
   if (table.rows.length === 0 || columns.length === 0) {
-    return null;
+    return (
+      <div className="compact-table">
+        <p className="eyebrow">Evidencia</p>
+        <h4>{table.name.replace(/[_-]+/g, " ")}</h4>
+        <p className="muted compact-copy">Sin filas para mostrar.</p>
+      </div>
+    );
   }
 
   return (
@@ -128,8 +168,16 @@ function ChatMessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
   return (
     <article className={`chat-message ${isUser ? "chat-message-user" : "chat-message-assistant"}`}>
-      <div className="message-avatar">{isUser ? "Tú" : "AI"}</div>
+      <div className="message-avatar" aria-hidden="true">
+        {isUser ? "Tú" : "IA"}
+      </div>
       <div className="message-card">
+        <div className="message-meta">
+          <span>{isUser ? "Tú" : "Analista local"}</span>
+          <time dateTime={message.created_at} title={message.created_at}>
+            {formatTimestamp(message.created_at)}
+          </time>
+        </div>
         {isUser ? <p>{message.content}</p> : <AssistantPayload message={message} />}
       </div>
     </article>
@@ -158,7 +206,7 @@ export function ChatConversation({
   }
 
   if (isLoading && !chat) {
-    return <section className="conversation-panel panel">Cargando chat…</section>;
+    return <ConversationSkeleton />;
   }
 
   if (error) {
@@ -171,16 +219,22 @@ export function ChatConversation({
 
   if (!chat) {
     return (
-      <section className="conversation-panel panel empty-state">
+      <section className="conversation-panel panel empty-state empty-state-card">
+        <div className="empty-illustration" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
         <p className="eyebrow">Empieza aquí</p>
         <h2>Crea o selecciona un chat</h2>
         <p className="muted">
-          Cada conversación conserva el dataset local y permite preguntas de seguimiento sobre el
-          mismo análisis.
+          Elige un dataset local, formula una pregunta y mantén el análisis en una conversación persistente.
         </p>
       </section>
     );
   }
+
+  const label = datasetLabel(chat.dataset_path);
 
   return (
     <section className="conversation-panel panel">
@@ -189,28 +243,59 @@ export function ChatConversation({
           <p className="eyebrow">Chat activo</p>
           <h2>{chat.title}</h2>
           <p className="muted" data-testid="chat-memory-note">
-            Mismo dataset · {chat.dataset_path}
+            Mismo dataset · {label}
           </p>
+          <details className="technical-details technical-details-inline">
+            <summary>Ver ruta y trazabilidad</summary>
+            <dl className="metadata-list metadata-list-compact">
+              <div>
+                <dt>Dataset path</dt>
+                <dd>{chat.dataset_path}</dd>
+              </div>
+              <div>
+                <dt>Último run</dt>
+                <dd>{chat.latest_run_id ?? "Sin run asociado"}</dd>
+              </div>
+              <div>
+                <dt>Runs del chat</dt>
+                <dd>{chat.run_ids.length}</dd>
+              </div>
+            </dl>
+          </details>
         </div>
         <span className="status-chip status-ok">{chat.messages.length} mensajes</span>
       </div>
 
-      <div className="message-list">
+      <div className="message-list" aria-live="polite">
         {chat.messages.map((message) => (
           <ChatMessageBubble key={message.message_id} message={message} />
         ))}
+        {sending ? (
+          <article className="chat-message chat-message-assistant" role="status" aria-label="Analizando">
+            <div className="message-avatar" aria-hidden="true">
+              IA
+            </div>
+            <div className="message-card message-card-loading">
+              <span className="skeleton-line skeleton-line-short" />
+              <span className="skeleton-line" />
+              <span className="skeleton-line skeleton-line-medium" />
+            </div>
+          </article>
+        ) : null}
       </div>
 
-      <form className="follow-up-form" onSubmit={(event) => void handleSubmit(event)}>
+      <form className="follow-up-form composer-card" onSubmit={(event) => void handleSubmit(event)}>
         <label className="form-field">
           <span>Nueva pregunta</span>
           <textarea
             aria-label="Nueva pregunta"
+            name="follow_up_prompt"
             rows={3}
-            placeholder="Ej. compara la primera carrera con la segunda"
+            placeholder="Ej. compara la primera carrera con la segunda…"
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
             disabled={!canSubmit || sending}
+            autoComplete="off"
           />
         </label>
         {disabledReason ? <p className="submit-help">{disabledReason}</p> : null}
@@ -221,4 +306,3 @@ export function ChatConversation({
     </section>
   );
 }
-

@@ -1,0 +1,23 @@
+[
+  {
+    "column_name": "Age",
+    "non_null_count": 1000,
+    "avg_value": 20.898,
+    "min_value": 17.0,
+    "max_value": 25.0
+  },
+  {
+    "column_name": "Study_Hours_per_Day",
+    "non_null_count": 1000,
+    "avg_value": 4.037969999999998,
+    "min_value": 0.5,
+    "max_value": 8.05
+  },
+  {
+    "column_name": "Sleep_Hours",
+    "non_null_count": 1000,
+    "avg_value": 6.525029999999993,
+    "min_value": 3.0,
+    "max_value": 10.0
+  }
+]

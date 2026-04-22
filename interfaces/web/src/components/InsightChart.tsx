@@ -17,6 +17,10 @@ function formatNumber(value: number): string {
   return new Intl.NumberFormat("es", { maximumFractionDigits: 2 }).format(value);
 }
 
+function formatLabel(value: string): string {
+  return value.replace(/[_-]+/g, " ");
+}
+
 function numericValue(value: unknown): number {
   if (typeof value === "number") {
     return value;
@@ -55,7 +59,7 @@ function BarChart({ chart, xKey, yKey }: { chart: ChartReference; xKey: string; 
         return (
           <div className="bar-row" key={`${chart.name}-${label}`}>
             <span className="bar-label">{label}</span>
-            <div className="bar-track">
+            <div className="bar-track" aria-hidden="true">
               <div className="bar-fill" style={{ width: `${width}%` }} />
             </div>
             <strong>{formatNumber(value)}</strong>
@@ -124,7 +128,12 @@ function ChartTable({ chart }: { chart: ChartReference }) {
   }, [rows]);
 
   if (rows.length === 0 || columns.length === 0) {
-    return null;
+    return (
+      <div className="mini-empty-state" data-testid="chart-view-table">
+        <strong>Sin datos visualizables</strong>
+        <p className="muted">El resultado no devolvió filas para esta vista.</p>
+      </div>
+    );
   }
 
   return (
@@ -169,6 +178,11 @@ export function InsightChart({ chart }: { chart: ChartReference }) {
         <div>
           <p className="eyebrow">Gráfico</p>
           <h4>{chart.title ?? chart.name}</h4>
+          {xKey && yKey ? (
+            <p className="chart-subtitle">
+              {formatLabel(yKey)} por {formatLabel(xKey)}
+            </p>
+          ) : null}
         </div>
         <span className="status-chip status-soft">visual</span>
       </div>
@@ -179,6 +193,7 @@ export function InsightChart({ chart }: { chart: ChartReference }) {
             type="button"
             className={`chart-switcher-button ${selectedView === view.value ? "chart-switcher-button-active" : ""}`}
             onClick={() => setSelectedView(view.value)}
+            aria-pressed={selectedView === view.value}
           >
             {view.label}
           </button>

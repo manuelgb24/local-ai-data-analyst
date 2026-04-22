@@ -152,7 +152,8 @@ function NewChatCard({
             <span>Ruta local del dataset</span>
             <input
               aria-label="Ruta local del dataset"
-              placeholder="DatasetV1/student_lifestyle_performance_dataset.csv"
+              name="dataset_path"
+              placeholder="DatasetV1/student_lifestyle_performance_dataset.csv…"
               value={payload.dataset_path}
               onChange={(event) => {
                 setPayload((current) => ({ ...current, dataset_path: event.target.value }));
@@ -183,8 +184,9 @@ function NewChatCard({
           <span>Pregunta inicial</span>
           <textarea
             aria-label="Pregunta inicial"
+            name="initial_prompt"
             rows={4}
-            placeholder="Ej. dime cuál es la carrera en la que más se estudia"
+            placeholder="Ej. dime cuál es la carrera en la que más se estudia…"
             value={payload.user_prompt}
             onChange={(event) => {
               setPayload((current) => ({ ...current, user_prompt: event.target.value }));
@@ -378,12 +380,11 @@ export function App() {
   return (
     <main className="app-shell">
       <header className="hero">
-        <div>
+        <div className="hero-copy">
           <p className="eyebrow">3_agents · Local-first</p>
           <h1>Chats analíticos locales</h1>
           <p className="hero-text">
-            Analiza un dataset local, conversa con memoria corta y revisa gráficos embebidos sin
-            salir de la interfaz.
+            Analiza un dataset local, conversa con memoria corta y revisa gráficos embebidos sin salir de la interfaz.
           </p>
         </div>
         <div className="hero-status">
@@ -394,7 +395,7 @@ export function App() {
         </div>
       </header>
 
-      <div className="product-layout">
+      <div className={`product-layout ${selectedChatId ? "product-layout-has-chat" : "product-layout-empty"}`}>
         <div className="left-rail">
           <NewChatCard
             defaultAgentId={defaultAgentId}
