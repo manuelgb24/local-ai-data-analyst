@@ -1,4 +1,4 @@
-﻿# AGENTS.md
+# AGENTS.md
 
 ## Misión actual del proyecto
 `3_agents` tiene el **MVP local-first cerrado** y validado. Ese MVP deja de tratarse como trabajo pendiente y pasa a ser la base estable del producto.
@@ -22,7 +22,12 @@ El repositorio ya dispone de:
 - generación de artifacts y trazabilidad básica;
 - cobertura mínima de tests unitarios, integración, E2E y smoke.
 
-La documentación y las siguientes tareas deben asumir ese punto de partida y no hablar del MVP como si siguiera pendiente de construcción.
+Las siguientes tareas deben asumir ese punto de partida y no hablar del MVP como si siguiera pendiente de construcción.
+
+## Nota sobre documentación pública
+Este repositorio público usa `docs/index.md` como página de portfolio/demo visual.
+
+La documentación interna de planificación, contratos y decisiones ya no vive en `docs/` dentro del repo público. Las reglas operativas que siguen siendo relevantes para agentes se conservan en este archivo para dejar visible cómo se trabajó con asistencia de IA sin abrir alcance innecesario.
 
 ## Guardrails permanentes del producto
 Estas reglas siguen vigentes aunque el proyecto entre en fase producto:
@@ -66,7 +71,6 @@ Reglas arquitectónicas:
 - `artifacts` persiste outputs trazables.
 - `adapters` encapsula dependencias externas como DuckDB y Ollama.
 - `observability` debe crecer para cubrir operación local, health y diagnóstico.
-- `docs/TASKS.md` es la secuencia operativa principal para las fases futuras del producto.
 
 ## Límites actuales del sistema
 Siguen fuera de alcance por ahora:
@@ -81,14 +85,14 @@ Siguen fuera de alcance por ahora:
 - auto-selección de agente.
 
 ## Reglas de trabajo del repo
-- Documentation-first antes de reabrir implementación relevante.
+- Decision-first antes de reabrir implementación relevante.
 - Cambios pequeños, acotados y verificables.
 - No introducir dependencias nuevas sin justificar su necesidad.
 - No reintroducir Planner ni routing automático.
 - No implementar features fuera de scope.
 - Mantener separación clara entre capas.
-- Actualizar documentación cuando cambie una decisión importante.
-- Mantener coherencia entre `docs/TASKS.md`, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/CONTRACTS.md` y `docs/PRODUCT_SCOPE.md`.
+- Actualizar `README.md`, `AGENTS.md` o la documentación pública cuando cambie una decisión importante visible para usuarios o colaboradores.
+- Mantener coherencia entre `README.md`, `AGENTS.md`, `docs/index.md` y el comportamiento real del producto.
 
 ## Definition of Done
 Una tarea se considera terminada solo si:
@@ -101,10 +105,10 @@ Una tarea se considera terminada solo si:
 - deja claro si el cambio pertenece al core, a la API local, a la UI o a la operación.
 
 ## Validaciones mínimas antes de cerrar una tarea
-- Revisar el cambio contra `docs/TASKS.md` y `docs/PRODUCT_SCOPE.md`.
+- Revisar el cambio contra el alcance descrito en este `AGENTS.md` y en `README.md`.
 - Comprobar que no se abrió alcance accidentalmente.
 - Comprobar que no se reintrodujeron Planner, routing automático o multi-agent real.
-- Verificar consistencia con `docs/ARCHITECTURE.md`, `docs/DECISIONS.md` y `docs/CONTRACTS.md`.
+- Verificar consistencia con la arquitectura permitida descrita en este archivo.
 - Verificar el resultado real antes de afirmar que está cerrado.
 
 ## Implementación permitida en la siguiente fase
@@ -139,7 +143,7 @@ Una tarea se considera terminada solo si:
 - Toma el core actual como base, no como borrador.
 - Haz cambios pequeños, concretos y verificables.
 - Toca solo las piezas necesarias para el objetivo actual.
-- Usa `docs/TASKS.md` como guía secuencial principal de trabajo futuro.
+- Usa este `AGENTS.md` como guía de límites, arquitectura y colaboración con IA.
 - Valida el resultado real antes de cerrar una tarea.
 - No inventes arquitectura nueva ni reabras decisiones ya congeladas sin documentarlo.
 

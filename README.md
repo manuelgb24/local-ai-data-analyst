@@ -1,4 +1,4 @@
-﻿# Local AI Data Analyst
+# Local AI Data Analyst
 
 A local-first AI data analyst for exploring spreadsheet and tabular files from your own machine.
 
@@ -264,7 +264,7 @@ data/              Local dataset loading and preparation
 interfaces/api/    Local FastAPI surface
 interfaces/cli/    Operational CLI
 interfaces/web/    React/Vite web UI
-docs/              Architecture, contracts, decisions, operations and release notes
+docs/              Portfolio page and demo video placeholder for GitHub Pages
 runtime/           Run coordination and tracking
 tests/             Unit, integration, E2E and smoke tests
 ```
@@ -298,4 +298,3 @@ The foundation is already there: local data, explicit execution, traceable artif
 ## License
 
 MIT.
-
