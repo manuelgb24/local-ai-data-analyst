@@ -278,7 +278,7 @@ def test_runtime_coordinator_marks_failed_with_real_dataset_preparer_on_empty_fi
 
 def test_local_dataset_preparer_profiles_datasetv1_reference_csv() -> None:
     preparer = LocalDatasetPreparer()
-    dataset_path = Path("DatasetV1/Walmart_Sales.csv")
+    dataset_path = Path("DatasetV1/demo_business_metrics.csv")
 
     prepared = preparer(build_request(dataset_path), run_id="run-datasetv1")
 

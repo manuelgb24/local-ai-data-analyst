@@ -99,7 +99,7 @@ Demostrar que la experiencia principal del producto funciona de forma completa.
 ### Comandos de referencia actuales
 - `npm --prefix interfaces/web run build`
 - `npm --prefix interfaces/web run test:e2e`
-- smoke manual real: API local + UI local con `DatasetV1/Walmart_Sales.csv`
+- smoke manual real: API local + UI local con `DatasetV1/demo_business_metrics.csv`
 
 ---
 
@@ -231,7 +231,7 @@ Preparar la etapa en la que el producto se distribuya de forma más formal.
 ## Fixtures y datasets de prueba
 La estrategia actual sigue siendo válida:
 - datasets temporales creados dentro de tests para `csv`, `xlsx`, `parquet`, vacío y corrupto;
-- `DatasetV1/Walmart_Sales.csv` como dataset de referencia del repo para integración y validación manual.
+- `DatasetV1/demo_business_metrics.csv` como dataset de referencia del repo para integración y validación manual.
 
 Uso esperado:
 - datasets temporales para validar invariantes y errores;

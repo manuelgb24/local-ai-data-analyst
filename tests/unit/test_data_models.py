@@ -6,7 +6,7 @@ from data import PreparedDataset
 
 def build_profile() -> DatasetProfile:
     return DatasetProfile(
-        source_path="DatasetV1/Walmart_Sales.csv",
+        source_path="DatasetV1/demo_business_metrics.csv",
         format="csv",
         table_name="dataset_run_001",
         schema=[DatasetColumn(name="store", type="INTEGER")],

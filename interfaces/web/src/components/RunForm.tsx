@@ -125,7 +125,7 @@ export function RunForm({
           <input
             aria-label="Ruta local del dataset"
             name="dataset_path"
-            placeholder="DatasetV1/Walmart_Sales.csv"
+            placeholder="DatasetV1/demo_business_metrics.csv"
             value={payload.dataset_path}
             onChange={(event) => updateField("dataset_path", event.target.value)}
             disabled={submitting}

@@ -24,7 +24,7 @@ from runtime import AgentRegistry, InMemoryRunTracker, RegisteredAgent, RuntimeC
 def build_request(session_id: str | None = None) -> RunRequest:
     return RunRequest(
         agent_id="data_analyst",
-        dataset_path="DatasetV1/Walmart_Sales.csv",
+        dataset_path="DatasetV1/demo_business_metrics.csv",
         user_prompt="Resume las ventas",
         session_id=session_id,
     )
@@ -32,7 +32,7 @@ def build_request(session_id: str | None = None) -> RunRequest:
 
 def build_profile() -> DatasetProfile:
     return DatasetProfile(
-        source_path="DatasetV1/Walmart_Sales.csv",
+        source_path="DatasetV1/demo_business_metrics.csv",
         format="csv",
         table_name="dataset_run_001",
         schema=[DatasetColumn(name="store", type="INTEGER")],

@@ -33,7 +33,7 @@ Debe aparecer `deepseek-r1:8b` en la lista de modelos de Ollama.
 
 ### 4. Ejecutar una prueba manual mínima
 ```bash
-python -m interfaces.cli --agent data_analyst --dataset DatasetV1/Walmart_Sales.csv --prompt "Resume los hallazgos principales"
+python -m interfaces.cli --agent data_analyst --dataset DatasetV1/demo_business_metrics.csv --prompt "Resume los hallazgos principales"
 ```
 
 ### 5. Instalar dependencias de la UI web
@@ -113,7 +113,7 @@ Debe devolver:
 ```bash
 curl -X POST http://127.0.0.1:8000/runs ^
   -H "Content-Type: application/json" ^
-  -d "{\"agent_id\":\"data_analyst\",\"dataset_path\":\"DatasetV1/Walmart_Sales.csv\",\"user_prompt\":\"Resume los hallazgos principales\"}"
+  -d "{\"agent_id\":\"data_analyst\",\"dataset_path\":\"DatasetV1/demo_business_metrics.csv\",\"user_prompt\":\"Resume los hallazgos principales\"}"
 ```
 
 El `POST /runs` es síncrono en esta fase y devuelve el `RunDetail` final cuando el run termina.
@@ -132,14 +132,14 @@ La metadata persistida del run se guarda en `artifacts/runs/<run_id>/run.json`, 
 ```bash
 curl -X POST http://127.0.0.1:8000/chats ^
   -H "Content-Type: application/json" ^
-  -d "{\"agent_id\":\"data_analyst\",\"dataset_path\":\"DatasetV1/student_lifestyle_performance_dataset.csv\",\"user_prompt\":\"dime cual es la carrera (branch) en la que mas se estudia\"}"
+  -d "{\"agent_id\":\"data_analyst\",\"dataset_path\":\"DatasetV1/demo_business_metrics.csv\",\"user_prompt\":\"Which region generated the highest revenue?\"}"
 ```
 
 Para continuar la conversación:
 ```bash
 curl -X POST http://127.0.0.1:8000/chats/{chat_id}/messages ^
   -H "Content-Type: application/json" ^
-  -d "{\"user_prompt\":\"y comparalo con la segunda carrera\"}"
+  -d "{\"user_prompt\":\"Compare it with the second strongest region\"}"
 ```
 
 La metadata persistida del chat vive bajo `artifacts/chats/<chat_id>/chat.json`; los outputs técnicos siguen en `artifacts/runs/<run_id>`.
@@ -166,7 +166,7 @@ Por defecto:
 - abrir `http://127.0.0.1:8000/`;
 - comprobar readiness de aplicación y proveedor;
 - revisar que los chats persistidos cargan;
-- introducir `DatasetV1/student_lifestyle_performance_dataset.csv` como ruta manual;
+- introducir `DatasetV1/demo_business_metrics.csv` como ruta manual;
 - crear un chat con una pregunta inicial;
 - revisar narrativa, hallazgos, gráficos embebidos y exportaciones técnicas colapsadas;
 - enviar una pregunta de seguimiento sobre el mismo dataset.
@@ -194,7 +194,7 @@ Por defecto la UI queda disponible en `http://127.0.0.1:4173`.
 - abrir `http://127.0.0.1:4173`;
 - comprobar el readiness de aplicación y proveedor;
 - revisar que los chats persistidos cargan y que selecciona el chat más reciente;
-- introducir `DatasetV1/student_lifestyle_performance_dataset.csv` como ruta manual;
+- introducir `DatasetV1/demo_business_metrics.csv` como ruta manual;
 - crear un chat con un prompt simple;
 - revisar narrativa, hallazgos, tablas y gráficos del chat seleccionado;
 - cambiar a un chat previo y verificar su detalle persistido aunque el proveedor no esté listo para nuevos submits.

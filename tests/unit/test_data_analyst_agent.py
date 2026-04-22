@@ -65,7 +65,7 @@ class PatternDuckDBContext:
 def build_request() -> RunRequest:
     return RunRequest(
         agent_id="data_analyst",
-        dataset_path="DatasetV1/Walmart_Sales.csv",
+        dataset_path="DatasetV1/demo_business_metrics.csv",
         user_prompt="Resume los hallazgos principales",
     )
 
@@ -75,7 +75,7 @@ def build_context(duckdb_context: object, schema: list[DatasetColumn]) -> AgentE
         run_id="run-123",
         session_id="session-123",
         dataset_profile=DatasetProfile(
-            source_path="DatasetV1/Walmart_Sales.csv",
+            source_path="DatasetV1/demo_business_metrics.csv",
             format="csv",
             table_name="dataset_run_123",
             schema=schema,
@@ -185,7 +185,7 @@ def test_data_analyst_agent_builds_grouped_study_ranking_and_embedded_chart() ->
     )
     request = RunRequest(
         agent_id="data_analyst",
-        dataset_path="DatasetV1/student_lifestyle_performance_dataset.csv",
+        dataset_path="DatasetV1/demo_business_metrics.csv",
         user_prompt="dime cual es la carrera (branch) en la que mas se estudia",
         session_id="chat-123",
         conversation_context=[{"role": "user", "content": "Estamos analizando el dataset de estudiantes."}],
@@ -234,7 +234,7 @@ def test_data_analyst_agent_strips_repetitive_section_headings_from_narrative() 
     )
     request = RunRequest(
         agent_id="data_analyst",
-        dataset_path="DatasetV1/student_lifestyle_performance_dataset.csv",
+        dataset_path="DatasetV1/demo_business_metrics.csv",
         user_prompt="dime cual es la carrera branch en la que mas se estudia",
     )
 
@@ -263,7 +263,7 @@ def test_data_analyst_agent_builds_correlation_for_two_numeric_columns() -> None
     )
     request = RunRequest(
         agent_id="data_analyst",
-        dataset_path="DatasetV1/student_lifestyle_performance_dataset.csv",
+        dataset_path="DatasetV1/demo_business_metrics.csv",
         user_prompt="los alumnos que mas duermen son los que mas horas van al gym?",
     )
 
@@ -294,7 +294,7 @@ def test_data_analyst_agent_builds_category_counts_when_only_dimension_is_reques
     )
     request = RunRequest(
         agent_id="data_analyst",
-        dataset_path="DatasetV1/student_lifestyle_performance_dataset.csv",
+        dataset_path="DatasetV1/demo_business_metrics.csv",
         user_prompt="cuantos alumnos hay por carrera branch?",
     )
 

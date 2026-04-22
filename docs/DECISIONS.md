@@ -63,9 +63,9 @@
 - **Descartes**: usar RAG como núcleo del análisis o montar colaboración entre agentes.
 - **Estado**: aceptada.
 
-## D-010 — `DatasetV1/Walmart_Sales.csv` es solo dataset de referencia
-- **Decisión**: tratar `DatasetV1/Walmart_Sales.csv` como dataset de referencia útil para validación y demos.
-- **Motivo**: ayuda a verificar el sistema sin convertirlo en dependencia conceptual del producto.
+## D-010 — `DatasetV1/demo_business_metrics.csv` es solo dataset sintético de referencia
+- **Decisión**: tratar `DatasetV1/demo_business_metrics.csv` como dataset sintético limpio para validación y demos públicas.
+- **Motivo**: ayuda a verificar el sistema y publicar el repo sin incluir datasets reales, privados o accidentales.
 - **Impacto**: puede usarse en validaciones manuales y smoke tests, pero no define el producto.
 - **Descartes**: fijarlo como dataset oficial del sistema.
 - **Estado**: aceptada.

@@ -13,7 +13,7 @@ from tests.smoke._ollama_ready import require_installed_model, require_ready_oll
 
 SMOKE_E2E_TIMEOUT_SECONDS = 240.0
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DATASET_PATH = REPO_ROOT / "DatasetV1" / "Walmart_Sales.csv"
+DATASET_PATH = REPO_ROOT / "DatasetV1" / "demo_business_metrics.csv"
 RUN_ID_PATTERN = re.compile(r"^Run ID: (?P<run_id>.+)$", re.MULTILINE)
 SESSION_ID_PATTERN = re.compile(r"^Session ID: (?P<session_id>.+)$", re.MULTILINE)
 RESPONSE_ARTIFACT_PATTERN = re.compile(r"^Response artifact: (?P<path>.+)$", re.MULTILINE)

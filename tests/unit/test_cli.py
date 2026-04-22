@@ -32,14 +32,14 @@ def test_build_run_request_translates_valid_cli_args() -> None:
     request = build_run_request(
         argparse.Namespace(
             agent_id="data_analyst",
-            dataset_path="DatasetV1/Walmart_Sales.csv",
+            dataset_path="DatasetV1/demo_business_metrics.csv",
             user_prompt="Resume ventas",
             session_id="session-123",
         )
     )
 
     assert request.agent_id == "data_analyst"
-    assert request.dataset_path == "DatasetV1/Walmart_Sales.csv"
+    assert request.dataset_path == "DatasetV1/demo_business_metrics.csv"
     assert request.user_prompt == "Resume ventas"
     assert request.session_id == "session-123"
 
@@ -49,7 +49,7 @@ def test_build_run_request_wraps_contract_validation_as_run_error() -> None:
         build_run_request(
             argparse.Namespace(
                 agent_id="data_analyst",
-                dataset_path="DatasetV1/Walmart_Sales.txt",
+                dataset_path="DatasetV1/demo_business_metrics.txt",
                 user_prompt="Resume ventas",
                 session_id=None,
             )

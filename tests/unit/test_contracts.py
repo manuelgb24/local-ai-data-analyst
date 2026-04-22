@@ -26,13 +26,13 @@ def build_dataset_profile() -> DatasetProfile:
 def test_run_request_accepts_valid_local_request() -> None:
     request = RunRequest(
         agent_id="data_analyst",
-        dataset_path="DatasetV1/Walmart_Sales.csv",
+        dataset_path="DatasetV1/demo_business_metrics.csv",
         user_prompt="Resume las ventas",
         session_id="session-123",
     )
 
     assert request.agent_id == "data_analyst"
-    assert request.dataset_path == "DatasetV1/Walmart_Sales.csv"
+    assert request.dataset_path == "DatasetV1/demo_business_metrics.csv"
     assert request.user_prompt == "Resume las ventas"
     assert request.session_id == "session-123"
 
@@ -49,7 +49,7 @@ def test_run_request_accepts_valid_local_request() -> None:
 def test_run_request_rejects_invalid_inputs(field_name: str, kwargs: dict[str, str]) -> None:
     payload = {
         "agent_id": "data_analyst",
-        "dataset_path": "DatasetV1/Walmart_Sales.csv",
+        "dataset_path": "DatasetV1/demo_business_metrics.csv",
         "user_prompt": "Resume las ventas",
     }
     payload.update(kwargs)

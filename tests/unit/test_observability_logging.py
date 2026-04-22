@@ -29,7 +29,7 @@ def test_structured_formatter_merges_bound_context_and_event_fields() -> None:
 
     token = bind_context(trace_id="trace-123", session_id="session-123")
     try:
-        log_event(logger, "run_started", run_id="run-123", dataset_path="DatasetV1/Walmart_Sales.csv")
+        log_event(logger, "run_started", run_id="run-123", dataset_path="DatasetV1/demo_business_metrics.csv")
     finally:
         reset_context(token)
         clear_context()
@@ -39,7 +39,7 @@ def test_structured_formatter_merges_bound_context_and_event_fields() -> None:
     assert payload["trace_id"] == "trace-123"
     assert payload["session_id"] == "session-123"
     assert payload["run_id"] == "run-123"
-    assert payload["dataset_path"] == "DatasetV1/Walmart_Sales.csv"
+    assert payload["dataset_path"] == "DatasetV1/demo_business_metrics.csv"
 
 
 def test_bind_context_restores_previous_values_on_reset() -> None:

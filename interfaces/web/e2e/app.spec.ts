@@ -18,7 +18,7 @@ test("creates a dataset chat and renders an embedded chart instead of raw artifa
   await expect(page.getByRole("heading", { name: "Chats analíticos locales", exact: true })).toBeVisible();
   await page
     .getByLabel("Dataset local")
-    .selectOption("DatasetV1/student_lifestyle_performance_dataset.csv");
+    .selectOption("DatasetV1/demo_business_metrics.csv");
   await page
     .getByLabel("Pregunta inicial")
     .fill("dime cual es la carrera (branch) en la que mas se estudia");
@@ -36,7 +36,7 @@ test("allows manual dataset path fallback", async ({ page }) => {
   await page.goto("/");
 
   await page.getByRole("button", { name: "Usar ruta manual" }).click();
-  await page.getByLabel("Ruta local del dataset").fill("DatasetV1/student_lifestyle_performance_dataset.csv");
+  await page.getByLabel("Ruta local del dataset").fill("DatasetV1/demo_business_metrics.csv");
   await page.getByLabel("Pregunta inicial").fill("dime cual es la carrera branch en la que mas se estudia");
   await page.getByRole("button", { name: "Crear chat" }).click();
 
@@ -45,7 +45,7 @@ test("allows manual dataset path fallback", async ({ page }) => {
 
 test("switches compatible chart views without requesting new analysis", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /Students lifestyle/ }).click();
+  await page.getByRole("button", { name: /Business metrics/ }).click();
 
   await expect(page.getByTestId("chart-ranking_Branch_by_Study_Hours_per_Day")).toBeVisible();
   await page.getByRole("button", { name: "Línea" }).click();
@@ -59,7 +59,7 @@ test("switches compatible chart views without requesting new analysis", async ({
 test("continues the selected chat with conversational memory", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: /Students lifestyle/ }).click();
+  await page.getByRole("button", { name: /Business metrics/ }).click();
   await expect(page.getByText("Civil lidera por horas de estudio")).toBeVisible();
 
   await page.getByLabel("Nueva pregunta").fill("y comparalo con la segunda carrera");
@@ -77,7 +77,7 @@ test("keeps chats browseable when provider is down and blocks new submissions", 
   await expect(page.getByText("Proveedor y modelo")).toBeVisible();
   await expect(page.getByText("deepseek-r1:8b")).toBeHidden();
   await expect(page.getByRole("button", { name: "Crear chat" })).toBeDisabled();
-  await page.getByRole("button", { name: /Students lifestyle/ }).click();
+  await page.getByRole("button", { name: /Business metrics/ }).click();
   await expect(page.getByText("Civil lidera por horas de estudio")).toBeVisible();
 });
 
@@ -94,8 +94,8 @@ test("prioritizes the selected conversation on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Students lifestyle" })).toBeVisible();
-  const chatBox = await page.getByRole("heading", { name: "Students lifestyle" }).boundingBox();
+  await expect(page.getByRole("heading", { name: "Business metrics" })).toBeVisible();
+  const chatBox = await page.getByRole("heading", { name: "Business metrics" }).boundingBox();
   const formBox = await page.getByRole("heading", { name: "Crear chat" }).boundingBox();
 
   expect(chatBox).not.toBeNull();

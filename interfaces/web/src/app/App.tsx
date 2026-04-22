@@ -153,7 +153,7 @@ function NewChatCard({
             <input
               aria-label="Ruta local del dataset"
               name="dataset_path"
-              placeholder="DatasetV1/student_lifestyle_performance_dataset.csv…"
+              placeholder="DatasetV1/demo_business_metrics.csv…"
               value={payload.dataset_path}
               onChange={(event) => {
                 setPayload((current) => ({ ...current, dataset_path: event.target.value }));

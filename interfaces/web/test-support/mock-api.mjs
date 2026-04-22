@@ -267,7 +267,7 @@ function buildSeedRuns() {
     createSucceededRun({
       runId: "run-ui-latest",
       sessionId: "session-ui-001",
-      datasetPath: "DatasetV1/Walmart_Sales.csv",
+      datasetPath: "DatasetV1/demo_business_metrics.csv",
       prompt: "Revisa el run persistido mas reciente",
       createdAt: "2026-04-15T12:00:00Z",
       updatedAt: "2026-04-15T12:00:04Z",
@@ -288,11 +288,11 @@ function buildSeedRuns() {
 function buildSeedChats() {
   return [
     createChat({
-      chatId: "chat-ui-students",
+      chatId: "chat-ui-demo",
       runId: "chat-seed-run-001",
-      datasetPath: "DatasetV1/student_lifestyle_performance_dataset.csv",
-      title: "Students lifestyle",
-      prompt: "dime cual es la carrera (branch) en la que mas se estudia",
+      datasetPath: "DatasetV1/demo_business_metrics.csv",
+      title: "Business metrics",
+      prompt: "Which region has the strongest revenue?",
       createdAt: "2026-04-20T12:00:00Z",
       updatedAt: "2026-04-20T12:00:04Z",
     }),
@@ -302,17 +302,17 @@ function buildSeedChats() {
 function listLocalDatasets() {
   return [
     {
-      name: "student_lifestyle_performance_dataset.csv",
-      label: "Student lifestyle performance dataset",
-      path: "DatasetV1/student_lifestyle_performance_dataset.csv",
+      name: "demo_business_metrics.csv",
+      label: "Demo business metrics",
+      path: "DatasetV1/demo_business_metrics.csv",
       format: "csv",
       size_bytes: 123456,
     },
     {
-      name: "Walmart_Sales.csv",
-      label: "Walmart Sales",
-      path: "DatasetV1/Walmart_Sales.csv",
-      format: "csv",
+      name: "demo_business_metrics.xlsx",
+      label: "Demo business metrics",
+      path: "DatasetV1/demo_business_metrics.xlsx",
+      format: "xlsx",
       size_bytes: 654321,
     },
   ];

@@ -2,6 +2,21 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .tmp_pytest/
+.tools/
+.tmp_tools/
+
+.env
+.env.*
+!.env.example
+.mcp.json
+*.pem
+*.key
+
+artifacts/chats/
+artifacts/runs/
+
+DatasetV1/*
+!DatasetV1/demo_business_metrics.csv
 
 interfaces/web/node_modules/
 interfaces/web/dist/

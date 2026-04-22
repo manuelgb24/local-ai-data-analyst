@@ -25,7 +25,7 @@ from runtime import AgentRegistry, InMemoryRunTracker, RegisteredAgent, RuntimeC
 
 def build_profile() -> DatasetProfile:
     return DatasetProfile(
-        source_path="DatasetV1/Walmart_Sales.csv",
+        source_path="DatasetV1/demo_business_metrics.csv",
         format="csv",
         table_name="dataset_run_api_001",
         schema=[DatasetColumn(name="sales", type="DOUBLE")],
@@ -144,7 +144,7 @@ def test_post_runs_executes_core_and_persists_detail(repo_tmp_path: Path) -> Non
         "/runs",
         json={
             "agent_id": "data_analyst",
-            "dataset_path": "DatasetV1/Walmart_Sales.csv",
+            "dataset_path": "DatasetV1/demo_business_metrics.csv",
             "user_prompt": "Resume ventas",
         },
     )
@@ -206,7 +206,7 @@ def test_chat_endpoints_create_persist_and_continue_session(repo_tmp_path: Path)
         "/chats",
         json={
             "agent_id": "data_analyst",
-            "dataset_path": "DatasetV1/student_lifestyle_performance_dataset.csv",
+            "dataset_path": "DatasetV1/demo_business_metrics.csv",
             "user_prompt": "dime cual es la carrera en la que mas se estudia",
         },
     )
@@ -214,7 +214,7 @@ def test_chat_endpoints_create_persist_and_continue_session(repo_tmp_path: Path)
     assert create_response.status_code == 200
     chat = create_response.json()
     chat_id = chat["chat_id"]
-    assert chat["dataset_path"] == "DatasetV1/student_lifestyle_performance_dataset.csv"
+    assert chat["dataset_path"] == "DatasetV1/demo_business_metrics.csv"
     assert chat["messages"][0]["role"] == "user"
     assert chat["messages"][1]["role"] == "assistant"
     assert chat["messages"][1]["result"]["narrative"].startswith("Respuesta para")
@@ -289,7 +289,7 @@ def test_chat_endpoint_persists_failed_agent_message(repo_tmp_path: Path) -> Non
         "/chats",
         json={
             "agent_id": "data_analyst",
-            "dataset_path": "DatasetV1/Walmart_Sales.csv",
+            "dataset_path": "DatasetV1/demo_business_metrics.csv",
             "user_prompt": "Resume ventas",
         },
     )
@@ -330,7 +330,7 @@ def test_post_runs_with_invalid_payload_returns_api_error_shape(repo_tmp_path: P
         "/runs",
         json={
             "agent_id": "data_analyst",
-            "dataset_path": "DatasetV1/Walmart_Sales.txt",
+            "dataset_path": "DatasetV1/demo_business_metrics.txt",
             "user_prompt": "Resume ventas",
         },
     )
@@ -386,8 +386,8 @@ def test_get_local_datasets_lists_supported_datasetv1_files(repo_tmp_path: Path)
     artifacts_root = repo_tmp_path / "artifacts"
     dataset_root = repo_tmp_path / "DatasetV1"
     dataset_root.mkdir()
-    csv_path = dataset_root / "student_lifestyle_performance_dataset.csv"
-    xlsx_path = dataset_root / "Walmart_Sales.xlsx"
+    csv_path = dataset_root / "demo_business_metrics.csv"
+    xlsx_path = dataset_root / "demo_business_metrics.xlsx"
     ignored_path = dataset_root / "notes.txt"
     csv_path.write_text("a,b\n1,2\n", encoding="utf-8")
     xlsx_path.write_bytes(b"fake-xlsx-for-listing-only")
@@ -420,18 +420,18 @@ def test_get_local_datasets_lists_supported_datasetv1_files(repo_tmp_path: Path)
     assert response.headers["X-Trace-Id"]
     assert response.json() == [
         {
-            "name": "Walmart_Sales.xlsx",
-            "label": "Walmart Sales",
-            "path": str(Path("DatasetV1") / "Walmart_Sales.xlsx").replace("\\", "/"),
-            "format": "xlsx",
-            "size_bytes": xlsx_path.stat().st_size,
-        },
-        {
-            "name": "student_lifestyle_performance_dataset.csv",
-            "label": "Student lifestyle performance dataset",
-            "path": str(Path("DatasetV1") / "student_lifestyle_performance_dataset.csv").replace("\\", "/"),
+            "name": "demo_business_metrics.csv",
+            "label": "Demo business metrics",
+            "path": str(Path("DatasetV1") / "demo_business_metrics.csv").replace("\\", "/"),
             "format": "csv",
             "size_bytes": csv_path.stat().st_size,
+        },
+        {
+            "name": "demo_business_metrics.xlsx",
+            "label": "Demo business metrics",
+            "path": str(Path("DatasetV1") / "demo_business_metrics.xlsx").replace("\\", "/"),
+            "format": "xlsx",
+            "size_bytes": xlsx_path.stat().st_size,
         },
     ]
 
@@ -524,7 +524,7 @@ def test_get_runs_and_artifacts_read_persisted_history_after_app_recreation(repo
         "/runs",
         json={
             "agent_id": "data_analyst",
-            "dataset_path": "DatasetV1/Walmart_Sales.csv",
+            "dataset_path": "DatasetV1/demo_business_metrics.csv",
             "user_prompt": "Resume ventas",
         },
     )
@@ -549,7 +549,7 @@ def test_get_runs_and_artifacts_read_persisted_history_after_app_recreation(repo
 
     assert list_response.status_code == 200
     assert list_response.json()[0]["run_id"] == run_id
-    assert list_response.json()[0]["dataset_path"] == "DatasetV1/Walmart_Sales.csv"
+    assert list_response.json()[0]["dataset_path"] == "DatasetV1/demo_business_metrics.csv"
     assert detail_response.status_code == 200
     assert detail_response.json()["result"]["narrative"] == "Narrativa persistida"
     assert artifacts_response.status_code == 200
@@ -585,7 +585,7 @@ def test_failed_runs_are_listed_and_detail_preserves_persisted_error(repo_tmp_pa
         "/runs",
         json={
             "agent_id": "data_analyst",
-            "dataset_path": "DatasetV1/Walmart_Sales.csv",
+            "dataset_path": "DatasetV1/demo_business_metrics.csv",
             "user_prompt": "Resume ventas",
         },
     )
@@ -675,7 +675,7 @@ def test_missing_artifact_files_keep_persisted_references_without_crashing(repo_
         "/runs",
         json={
             "agent_id": "data_analyst",
-            "dataset_path": "DatasetV1/Walmart_Sales.csv",
+            "dataset_path": "DatasetV1/demo_business_metrics.csv",
             "user_prompt": "Resume ventas",
         },
     )
@@ -722,7 +722,7 @@ def test_provider_unavailable_error_maps_to_503(repo_tmp_path: Path) -> None:
         "/runs",
         json={
             "agent_id": "data_analyst",
-            "dataset_path": "DatasetV1/Walmart_Sales.csv",
+            "dataset_path": "DatasetV1/demo_business_metrics.csv",
             "user_prompt": "Resume ventas",
         },
     )

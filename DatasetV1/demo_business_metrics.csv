@@ -1,0 +1,25 @@
+date,region,channel,product,units_sold,revenue_usd,cost_usd,customer_satisfaction,response_time_hours
+2026-01-05,North,Online,Starter Kit,42,3150,1840,4.6,3.2
+2026-01-06,South,Retail,Starter Kit,28,2100,1260,4.2,5.1
+2026-01-07,East,Partner,Analytics Pack,18,5400,2700,4.8,2.4
+2026-01-08,West,Online,Analytics Pack,24,7200,3360,4.7,2.1
+2026-01-09,North,Retail,Automation Bundle,12,4800,2520,4.1,6.0
+2026-01-10,South,Partner,Automation Bundle,16,6400,3040,4.5,4.4
+2026-02-03,East,Online,Starter Kit,55,4125,2365,4.7,2.8
+2026-02-04,West,Retail,Starter Kit,31,2325,1395,4.3,4.9
+2026-02-05,North,Partner,Analytics Pack,22,6600,3190,4.9,2.2
+2026-02-06,South,Online,Analytics Pack,27,8100,3780,4.6,2.5
+2026-02-07,East,Retail,Automation Bundle,15,6000,3150,4.0,6.4
+2026-02-08,West,Partner,Automation Bundle,19,7600,3610,4.4,4.1
+2026-03-04,North,Online,Starter Kit,61,4575,2623,4.8,2.6
+2026-03-05,South,Retail,Starter Kit,35,2625,1575,4.2,5.4
+2026-03-06,East,Partner,Analytics Pack,26,7800,3770,4.9,2.0
+2026-03-07,West,Online,Analytics Pack,33,9900,4620,4.7,2.3
+2026-03-08,North,Retail,Automation Bundle,18,7200,3780,4.3,5.6
+2026-03-09,South,Partner,Automation Bundle,23,9200,4370,4.6,3.8
+2026-04-02,East,Online,Starter Kit,64,4800,2752,4.8,2.5
+2026-04-03,West,Retail,Starter Kit,38,2850,1710,4.4,4.7
+2026-04-04,North,Partner,Analytics Pack,29,8700,4205,4.9,1.9
+2026-04-05,South,Online,Analytics Pack,36,10800,5040,4.8,2.1
+2026-04-06,East,Retail,Automation Bundle,21,8400,4410,4.2,5.8
+2026-04-07,West,Partner,Automation Bundle,27,10800,5130,4.7,3.5

@@ -60,7 +60,7 @@ Por defecto:
 2. Confirmar que la UI carga.
 3. Verificar readiness de aplicacion y proveedor.
 4. Comprobar que el historial persistido carga.
-5. Lanzar un run con `DatasetV1/Walmart_Sales.csv`.
+5. Lanzar un run con `DatasetV1/demo_business_metrics.csv`.
 6. Revisar narrativa, hallazgos y artifacts.
 
 ## Validacion repo-local de Fase 7
