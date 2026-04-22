@@ -5,7 +5,7 @@
 
 ## 🎬 Live Demo
 
-[▶ Aquí se pega el vídeo](Demo.mp4)
+[▶ Click here to watch the demo](Demo.mp4)
 
 ---
 
