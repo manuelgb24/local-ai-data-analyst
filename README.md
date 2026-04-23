@@ -120,6 +120,52 @@ ollama list
 
 ---
 
+## Replicate locally in 5 minutes
+
+Clone the repository:
+
+```bash
+git clone https://github.com/manuelgb24/local-ai-data-analyst.git
+cd local-ai-data-analyst
+```
+
+Install Python and web dependencies:
+
+```bash
+python -m pip install -r requirements-dev.txt
+npm ci --prefix interfaces/web
+```
+
+Install the local model required for real AI analysis:
+
+```bash
+ollama pull deepseek-r1:8b
+```
+
+Build and start the local product:
+
+```bash
+npm --prefix interfaces/web run build
+python -m interfaces.api --serve-web
+```
+
+Open:
+
+```text
+http://127.0.0.1:8000
+```
+
+You can validate most of the project without Ollama running:
+
+```bash
+python scripts/ci_checks.py python
+python scripts/ci_checks.py web
+```
+
+For real AI analysis and smoke checks, Ollama must be running locally and `deepseek-r1:8b` must be available.
+
+---
+
 ## Setup
 
 ### 1. Install Python dependencies
@@ -273,11 +319,24 @@ tests/             Unit, integration, E2E and smoke tests
 
 ## Security and privacy notes
 
-- Datasets are loaded from local paths.
-- Generated run/chat artifacts stay local and are ignored by git.
-- The default workflow runs against local files and a local Ollama model.
-- Generated outputs stay in the local artifact store and are ignored by git.
-- Do not commit private datasets, `.env` files, credentials or generated artifacts.
+This repository is designed to be reproducible without publishing private data.
+
+- The committed demo dataset is synthetic: `DatasetV1/demo_business_metrics.csv`.
+- Real user datasets are loaded from local filesystem paths at runtime.
+- Generated chats, runs and artifacts stay in the local artifact store.
+- Generated outputs are ignored by git through `.gitignore`.
+- The default model workflow uses local Ollama, not an external AI API.
+- The project does not require a hosted backend, authentication system or multi-user service.
+- Do not commit private datasets, `.env` files, credentials, API keys or generated artifacts.
+
+Before publishing changes, check:
+
+```bash
+git status --short
+git ls-files | grep -E '(^|/)(\.env|.*\.pem|.*\.key|.*secret.*|.*token.*|.*credential.*|.*password.*)$'
+```
+
+The second command should return no tracked sensitive files.
 
 ---
 
