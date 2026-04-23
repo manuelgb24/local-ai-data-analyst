@@ -1,22 +1,57 @@
 # Local AI Data Analyst
 
-A local-first AI data analyst for exploring spreadsheet and tabular files from your own machine.
+How much of a junior data analyst workflow can a free local AI actually cover?
 
-This project turns a local dataset into an interactive analytical workspace: point the system to a file, ask a question in natural language, let DuckDB handle the data work, let a local Ollama model explain the results, and keep every output traceable through persisted artifacts.
+This repository is my attempt to test that question with a real, reproducible local product. It does not claim that AI fully replaces analysts. It asks a narrower and more useful question: how far can a local model, DuckDB and a disciplined product workflow go before human judgment becomes essential again?
 
-The goal is not to make another notebook demo. The goal is to show how an AI data product can be built with clear boundaries, reproducible execution and local infrastructure discipline from the start.
+The answer this project explores is intentionally practical. A free local AI can help with initial dataset exploration, profiling, simple analytical questions, SQL-backed summaries and traceable reports. It still needs a human for business context, ambiguous decisions, data quality judgment and final responsibility.
+
+That tension is the point of the project.
 
 ---
 
-## Why this exists
+## The question behind this project
 
-Analyzing a dataset is often more scattered than it should be.
+Junior data analysis work often starts with repeatable tasks: load a spreadsheet, understand the columns, ask basic questions, calculate grouped metrics, summarize patterns and package the result in a form someone else can inspect.
 
-You inspect the file in a spreadsheet, move to SQL for aggregation, open a notebook for charts, copy context into a model, then manually track which result came from which data slice. That works for exploration, but it is hard to reproduce and easy to lose.
+Those tasks are exactly where local AI is becoming interesting.
 
-I built this project to turn that workflow into a small local product.
+I built Local AI Data Analyst to turn that question into something measurable instead of theoretical. The system keeps the dataset on your machine, loads it into DuckDB, runs a focused analytical agent, asks a local Ollama model to explain the results, and stores every output behind the answer as traceable artifacts.
 
-The system keeps the dataset on your machine, loads it into DuckDB, runs a focused analytical agent, generates a human-readable answer, and stores the technical outputs behind the response. The web UI makes the experience usable; the local API makes it operable; the CLI keeps the technical workflow accessible.
+The goal is not to make another notebook demo. The goal is to show how a free local AI stack can cover part of the junior analyst loop while keeping the engineering boundaries clear.
+
+---
+
+## What the AI can handle
+
+In its current form, the product can cover a useful slice of early analytical work:
+
+- load local `csv`, `xlsx` and `parquet` files;
+- profile the dataset through DuckDB;
+- answer natural-language questions against one selected dataset;
+- produce narrative explanations from structured results;
+- return findings, SQL traces, tables, chart-ready data and artifact references;
+- keep runs and chats persistent enough to inspect later;
+- expose the same analytical core through a web UI, local API and CLI.
+
+This makes it useful for first-pass exploration and repeatable local analysis, especially when the dataset should not be uploaded to a hosted service.
+
+---
+
+## What still needs a human
+
+The project is deliberately honest about the boundary.
+
+A local AI analyst can accelerate the mechanical parts of analysis, but it does not own the conclusion. A human still matters for:
+
+- deciding which business question is worth asking;
+- spotting misleading data or missing context;
+- cleaning ambiguous or messy source files;
+- validating whether an answer is useful, not just plausible;
+- making decisions that require domain knowledge;
+- taking responsibility for the final recommendation.
+
+So the project is not framed as “AI replaces analysts”. It is framed as: **which parts of junior analyst work can be automated locally, for free, and with evidence behind every answer?**
 
 ---
 
@@ -310,7 +345,7 @@ data/              Local dataset loading and preparation
 interfaces/api/    Local FastAPI surface
 interfaces/cli/    Operational CLI
 interfaces/web/    React/Vite web UI
-docs/              Portfolio page and demo video placeholder for GitHub Pages
+docs/              Portfolio page and GitHub Pages entrypoint
 runtime/           Run coordination and tracking
 tests/             Unit, integration, E2E and smoke tests
 ```
@@ -348,7 +383,7 @@ The next hardening layer would focus on:
 - stricter artifact retention controls;
 - richer local observability;
 - clearer model readiness diagnostics;
-- additional specialized analytical agents once the product surface needs them.
+- additional specialist analysis workflows once the product surface needs them.
 
 The foundation is already there: local data, explicit execution, traceable artifacts and a product surface that is useful before it becomes complex.
 
