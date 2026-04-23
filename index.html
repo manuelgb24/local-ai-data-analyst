@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Local AI Data Analyst</title>
-  <meta name="description" content="Local-first AI data analysis agent with Web UI, local API, CLI, DuckDB, Ollama, and traceable artifacts." />
+  <meta name="description" content="A free local AI experiment testing how much of a junior data analyst workflow can be covered with DuckDB, Ollama, a web UI, local API, CLI, and traceable artifacts." />
   <style>
     :root {
       color-scheme: light;
@@ -136,7 +136,7 @@
     }
 
     h1 {
-      max-width: 780px;
+      max-width: 840px;
       margin: 0 0 16px;
       font-size: clamp(42px, 8vw, 82px);
       line-height: 0.95;
@@ -145,7 +145,7 @@
     }
 
     .subtitle {
-      max-width: 780px;
+      max-width: 800px;
       margin: 0 0 28px;
       color: var(--muted);
       font-size: clamp(18px, 2.2vw, 23px);
@@ -241,24 +241,29 @@
       </a>
       <nav class="hero-actions" aria-label="Project links">
         <a class="button" href="https://github.com/manuelgb24/local-ai-data-analyst" target="_blank" rel="noopener">Repository</a>
-        <a class="button" href="docs/">Docs page</a>
+        <a class="button" href="docs/">Experiment notes</a>
       </nav>
     </header>
 
     <main>
       <section class="hero" aria-labelledby="title">
-        <p class="eyebrow">Local-First AI Data Analysis Agent</p>
-        <h1 id="title">Local AI Data Analyst</h1>
-        <p class="subtitle">Analyze local datasets through a web UI, local API, and CLI using DuckDB, a single specialist <code>data_analyst</code> agent, Ollama, and traceable artifacts.</p>
+        <p class="eyebrow">Local AI Data Analysis Experiment</p>
+        <h1 id="title">Can free local AI take over junior data analysis work?</h1>
+        <p class="subtitle">A reproducible local-first experiment that tests how far DuckDB, Ollama, a single <code>data_analyst</code> agent, and traceable artifacts can go before human judgment becomes essential again.</p>
         <div class="hero-actions">
-          <a class="button button-primary" href="Demo.mp4">▶ Click here to watch the demo</a>
+          <a class="button button-primary" href="docs/">Explore the Experiment</a>
           <a class="button" href="https://github.com/manuelgb24/local-ai-data-analyst" target="_blank" rel="noopener">View Source Code</a>
         </div>
       </section>
 
-      <section aria-labelledby="what">
-        <h2 id="what">What This Project Does</h2>
-        <p>This project implements a local-first AI data analyst for exploring CSV, XLSX, and Parquet files directly from your own machine. A user selects a dataset, asks an analytical question, and receives a structured answer backed by DuckDB queries, local model narration, and persisted evidence.</p>
+      <section aria-labelledby="experiment">
+        <h2 id="experiment">The Experiment</h2>
+        <p>This project asks a practical question: how much of the early junior analyst loop can a free local AI cover? It loads local CSV, XLSX, and Parquet files, profiles them with DuckDB, answers focused questions with a local model, and keeps the evidence behind each answer.</p>
+      </section>
+
+      <section aria-labelledby="boundary">
+        <h2 id="boundary">Where The Human Still Matters</h2>
+        <p>The product does not claim that AI fully replaces analysts. It is strongest at first-pass exploration, simple questions, summaries, and traceable reporting. A human still owns the business question, data quality judgment, domain context, and final conclusion.</p>
       </section>
 
       <section aria-labelledby="how">
@@ -267,7 +272,7 @@
           <li>Local dataset → CSV, XLSX, or Parquet file</li>
           <li>DuckDB → local profiling and analytical queries</li>
           <li><code>data_analyst</code> agent → analytical reasoning layer</li>
-          <li>Ollama → local LLM narration with <code>deepseek-r1:8b</code></li>
+          <li>Ollama → free local LLM narration with <code>deepseek-r1:8b</code></li>
           <li>Artifacts → traceable results, tables, charts, and run outputs</li>
         </ul>
       </section>
@@ -285,6 +290,7 @@
         <h2 id="highlights">Engineering Highlights</h2>
         <div class="pill-row" aria-label="Engineering highlights">
           <span class="tag">Local-first</span>
+          <span class="tag">Free local model workflow</span>
           <span class="tag">No hosted backend</span>
           <span class="tag">DuckDB</span>
           <span class="tag">Ollama</span>
@@ -294,14 +300,9 @@
         </div>
       </section>
 
-      <section aria-labelledby="ai-assisted">
-        <h2 id="ai-assisted">AI-Assisted Engineering</h2>
-        <p>The repository keeps <code>AGENTS.md</code> visible because AI assistance was used inside explicit engineering boundaries. It documents the guardrails that kept the project local-first, scoped, layered, and disciplined.</p>
-      </section>
-
       <section aria-labelledby="why">
         <h2 id="why">Why This Matters</h2>
-        <p>Many AI data demos upload files to hosted tools. This project shows a different path: keep data local, keep runs reproducible, separate deterministic data work from model narration, and preserve the evidence behind each answer.</p>
+        <p>Many AI data demos upload files to hosted tools or hide the evidence behind an answer. This project shows a different path: keep data local, use a free local model workflow, separate deterministic data work from model narration, and preserve the trail behind every conclusion.</p>
       </section>
     </main>
 
